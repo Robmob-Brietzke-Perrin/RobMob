@@ -5,6 +5,20 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Differentiate target
+if("$ENV{ROS_DISTRO}" STREQUAL "jazzy")
+  message(STATUS "Building for ROS 2 Jazzy (Gazebo Harmonic)")
+  add_compile_definitions(ROS_DISTRO_JAZZY)
+
+elseif("$ENV{ROS_DISTRO}" STREQUAL "humble")
+  message(STATUS "Building for ROS 2 Humble (Gazebo Fortress)")
+  add_compile_definitions(ROS_DISTRO_HUMBLE)
+
+else()
+  message(WARNING "Unknown ROS_DISTRO: $ENV{ROS_DISTRO}. Defaulting to Humble build.")
+  add_compile_definitions(ROS_DISTRO_HUMBLE)
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)

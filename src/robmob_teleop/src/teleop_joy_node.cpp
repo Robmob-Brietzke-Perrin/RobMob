@@ -4,7 +4,13 @@ TeleopJoy::TeleopJoy()
     : Node("teleop_joy")
 {
   // Setup cmd_vel publisher
-  cmd_vel_pub_ = this->create_publisher<TwistStamped>("/cmd_vel", 10);
+#ifdef ROS_DISTRO_JAZZY
+    cmd_vel_pub_ = this->create_publisher<TwistStamped>("/cmd_vel", 10);
+#endif
+#ifdef ROS_DISTRO_HUMBLE
+    cmd_vel_pub_ = this->create_publisher<Twist>("/cmd_vel", 10);
+#endif
+
   auto timer_callback =
       [this]() -> void
   {
@@ -17,8 +23,14 @@ TeleopJoy::TeleopJoy()
       [this](Joy::UniquePtr msg) -> void
   {
     joy_msg_ = *msg;
+#ifdef ROS_DISTRO_JAZZY
     cmd_vel_msg_.twist.linear.x = joy_msg_.axes[1];
-    cmd_vel_msg_.twist.angular.z = joy_msg_.axes[3];
+    cmd_vel_msg_.twist.angular.z = joy_msg_.axes[2];
+#endif
+#ifdef ROS_DISTRO_HUMBLE
+    cmd_vel_msg_.linear.x = joy_msg_.axes[1];
+    cmd_vel_msg_.angular.z = joy_msg_.axes[2];
+#endif
   };
   joy_sub_ = this->create_subscription<Joy>("/joy", 10, joy_callback);
 }
