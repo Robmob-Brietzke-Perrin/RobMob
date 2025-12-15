@@ -37,5 +37,9 @@ ros2 launch turtlebot3_gazebo turtlebot3_house.launch.py
 ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=True use_rviz:=True
 ```
 
+Save rviz map
+```bash
+ros2 run nav2_map_server map_saver_cli -f my_map
+```
 </test>
 
