@@ -1,0 +1,4 @@
+#ifndef ROBMOB_RRT_CONNECT_HPP
+#define ROBMOB_RRT_CONNECT_HPP
+
+#endif

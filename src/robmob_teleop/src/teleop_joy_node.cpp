@@ -15,7 +15,7 @@ TeleopJoy::TeleopJoy()
   // Setup joy subscriber
   auto joy_callback =
       [this](Joy::UniquePtr msg) -> void
-  {
+  { 
     joy_msg_ = *msg;
     cmd_vel_msg_.twist.linear.x = joy_msg_.axes[1];
     cmd_vel_msg_.twist.angular.z = joy_msg_.axes[3];
