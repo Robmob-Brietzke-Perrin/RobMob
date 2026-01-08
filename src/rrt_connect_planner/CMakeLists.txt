@@ -10,10 +10,11 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(nav_msgs REQUIRED) 
+find_package(geometry_msgs REQUIRED)
 find_package(robmob_interfaces REQUIRED)
 
 # find_package(geometry_msgs REQUIRED) # Some usefull msgs
-# find_package(visualization_msgs REQUIRED) # TODO: use this to publish current traj to rviz
+# find_package(visualization_msgs REQUIRED) # TODO: use this to publish current traj to rviz?
 # find_package(tf2 REQUIRED) # consider using this as well
 
 add_executable(planner_node src/planner_node.cpp)
@@ -27,11 +28,15 @@ ament_target_dependencies(planner_node
   rclcpp_action
   nav_msgs
   robmob_interfaces
+  geometry_msgs
 )
 
-# install(TARGETS planner_node
-#   DESTINATION lib/${PROJECT_NAME})
-
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+install(TARGETS planner_node
+  DESTINATION lib/${PROJECT_NAME})
 # install(DIRECTORY
 #   launch
 #   DESTINATION share/${PROJECT_NAME}/
