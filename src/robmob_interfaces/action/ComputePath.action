@@ -2,14 +2,13 @@
 geometry_msgs/PoseStamped start
 geometry_msgs/PoseStamped goal
 
-# TODO: add realistic default values
 uint32 max_iterations 128
 uint32 max_tree_size 128
 
 ---
 # Result
 nav_msgs/Path path
-bool success
+bool success false
 
 ---
 # Feedback

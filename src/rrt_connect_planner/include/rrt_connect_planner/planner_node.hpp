@@ -13,7 +13,6 @@
 
 
 constexpr int ALGORITHM_RATE = 10;
-constexpr int MAP_QUEUE_SIZE = 10;
 
 using namespace robmob_interfaces::action;
 using namespace std::placeholders;
@@ -36,7 +35,7 @@ public:
             // TODO: inflate map?
             latest_map_ = std::move(msg);
         };
-        map_sub_ = this->create_subscription<OccupancyGrid>("/map"/*TODO: find where to get the map*/, MAP_QUEUE_SIZE, map_callback);
+        map_sub_ = this->create_subscription<OccupancyGrid>("/map"/*TODO: find where to get the map*/, 10, map_callback);
 
         /* ===== Path publisher for Rviz ===== */
 
