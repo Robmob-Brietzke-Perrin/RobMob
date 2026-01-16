@@ -21,7 +21,7 @@ enum rrt_state
 
 class TreeNode
 {
-    std::shared_ptr<TreeNode> parent;
+    std::shared_ptr<TreeNode> parent = nullptr;
     Point pose;
 
     public:
