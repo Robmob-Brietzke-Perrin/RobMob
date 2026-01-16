@@ -168,6 +168,7 @@ class RRT
         float unew;
         if (New_State(x,xnear,xnew,unew))
         {
+            xnew.set_parent(std::make_shared<TreeNode>(xnear));
             tree.add_TreeNode(xnew);
             if (xnew.get_pos().x == Get_goal().x && xnew.get_pos().y == Get_goal().y) // Vérifie s'il est possible d'atteindre le point final
                 return REACHED;//reached;
