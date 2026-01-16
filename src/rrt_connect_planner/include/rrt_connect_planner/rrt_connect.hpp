@@ -7,6 +7,10 @@
 #include <memory.h>
 #include <memory>
 #include <vector>
+#include "geometry_msgs/msg/point.hpp"
+#include "std_msgs/msg/float64.hpp"
+
+using namespace geometry_msgs::msg;
 
 enum rrt_state
 {
@@ -15,15 +19,13 @@ enum rrt_state
     ADVANCED
 };
 
-class pos{public: float x, y;};
-
-class Point
+class TreeNode
 {
-    std::shared_ptr<Point> parent;
-    pos pose;
+    std::shared_ptr<TreeNode> parent;
+    Point pose;
 
     public:
-     void set_point(Point point)
+     void set_point(TreeNode point)
      {
         this->parent = point.parent;
         this->set_pos(point.get_pos().x,point.get_pos().y);
@@ -31,15 +33,16 @@ class Point
     
      void set_pos(float x,float y)
      {
-        this->pose = {x, y};
+        this->pose.x = x;
+        this->pose.y = y;   
      }
 
-     pos get_pos()
+     Point get_pos()
      {
         return pose;
      }
 
-     std::shared_ptr<Point> get_parent()
+     std::shared_ptr<TreeNode> get_parent()
     {
         return parent;
     }
@@ -47,23 +50,23 @@ class Point
 
 class Tree 
 {
-    std::vector<Point> l_Point;
-    std::vector<pos> path;
+    std::vector<TreeNode> l_Point;
+    std::vector<Point> path;
 
     public:
-    std::vector<pos> get_path()
+    std::vector<Point> get_path()
     {
         return path;
     }
 
-    std::vector<Point> get_L_Point()
+    std::vector<TreeNode> get_L_Point()
     {
         return l_Point;
     }   
 
-    void set_path(Point point)
+    void set_path(TreeNode point)
     {
-        std::shared_ptr<Point> tmp_parent;
+        std::shared_ptr<TreeNode> tmp_parent;
         tmp_parent->set_point(point);
         path.push_back(tmp_parent->get_pos());
         while(tmp_parent->get_parent() != NULL)
@@ -73,7 +76,7 @@ class Tree
         }
     }
 
-    void add_paths(std::vector<pos> path_b)
+    void add_paths(std::vector<Point> path_b)
     {
         std::reverse(path.begin(),path.end());
         path.pop_back();
@@ -86,11 +89,11 @@ class RRT
     int K;
 
 
-    Point RandState()
+    TreeNode RandState()
     {
         float xmax = 100;
         float ymax = 100;
-        Point xrand;
+        TreeNode xrand;
         xrand.set_pos(rand()/xmax,rand()/ymax);
         return xrand;
     }
@@ -108,16 +111,21 @@ class RRT
     //     }
     // }
 
-    Point Nearest_Neighbor(Point point,Tree tree) // Cherche le point le plus proche du point random donné
+    TreeNode Nearest_Neighbor(TreeNode point,Tree tree) // Cherche le point le plus proche du point random donné
     {
-        Point xnear;
-        std::vector<Point> l_Point = tree.get_L_Point();
-        int i = 0;
+        TreeNode xnear;
+        std::vector<TreeNode> l_Point = tree.get_L_Point();
+        long unsigned int i = 0;
         float dist = 1000000.0;
+        float l_x,l_y,x,y,tmp;
         while(i<sizeof(l_Point))
         {
-            float tmp = dist;
-            dist = std::min((l_Point[i].get_pos().x - point.get_pos().x)/ (l_Point[i].get_pos().y-point.get_pos().y),dist);
+            tmp = dist;
+            l_x = l_Point[i].get_pos().x;
+            l_y = l_Point[i].get_pos().y;
+            x = point.get_pos().x;
+            y = point.get_pos().y;
+            dist = std::min((l_x- x)/ (l_y-y),dist);
             if (tmp > dist)
                 xnear.set_point(l_Point[i]);            
             i++;
@@ -125,9 +133,9 @@ class RRT
         return xnear;
     } 
 
-    pos Get_goal(){pos goal; return goal;}
+    Point Get_goal(){Point goal; return goal;}
 
-    bool New_State(Point x,Point xnear,Point xnew,float unew) // Vérifie s'il atteint un point atteignable et envoie la commande au robot d'une distance constante donnée
+    bool New_State(TreeNode x,TreeNode xnear,TreeNode xnew,float unew) // Vérifie s'il atteint un point atteignable et envoie la commande au robot d'une distance constante donnée
     {
         float xdist = (x.get_pos().x-xnear.get_pos().x);
         float ydist = (x.get_pos().y-xnear.get_pos().y);
@@ -136,16 +144,16 @@ class RRT
         
         xnew.set_pos(xdist*unew, ydist*unew);
 
-        if ()//TODO faire un check de la occupencygrid a voir avec jojo
+        if (true)//TODO faire un check de la occupencygrid a voir avec jojo
             return true;
         else
             return true;
     }
 
-    rrt_state Extend(Tree tree,Point x)//Cherche à atteindre le point x donné par le random 
+    rrt_state Extend(Tree tree,TreeNode x)//Cherche à atteindre le point x donné par le random 
     {
-        Point xnear = Nearest_Neighbor(x, tree);
-        Point xnew;
+        TreeNode xnear = Nearest_Neighbor(x, tree);
+        TreeNode xnew;
         float unew;
         if (New_State(x,xnear,xnew,unew))
         {

@@ -23,7 +23,8 @@ target_include_directories(planner_node PUBLIC
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
 target_compile_features(planner_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-ament_target_dependencies(planner_node
+ament_target_dependencies(
+  planner_node
   rclcpp
   rclcpp_action
   nav_msgs
