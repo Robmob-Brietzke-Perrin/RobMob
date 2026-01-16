@@ -1,5 +1,4 @@
 #include "rrt_connect_planner/planner_node.hpp"
-#include "rrt_connect_planner/rrt_connect.hpp"
 #include <vector>
 
 class Point;
@@ -15,10 +14,10 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
     auto feedback = std::make_shared<ComputePath::Feedback>();
     auto result = std::make_shared<ComputePath::Result>();
 
-    path_msg.header.frame_id = "map";
-
     RRT algo;
-    Tree tree_a, tree_b;
+    Tree tree_start, tree_goal;
+    std::unique_ptr<Tree> tree_a = &tree_start;
+    std::unique_ptr<Tree> tree_b = &tree_goal;
     bool tree_size_ok = true;
     result->success=false;
     algo.init(goal_request->start, goal_request->goal);
@@ -34,30 +33,30 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
       if(extend(tree_a, x_rand) != TRAPPED)
       {
         feedback->tree_a_size++; // Bof vu le switch
+        x_new = tree_a.last_added();
         if(extend(tree_b, x_new) == REACHED)
         {
           std::vector<Point> raw_path = path(tree_a, tree_b);
           nav_msgs::msg::Path path_msg;
+          path_msg.header.frame_id = "map";
+          path_msg.header.stamp = this->now();
           for (auto p : raw_path)
           {
             geometry_msgs::msg::PoseStamped new_pose;
             new_pose.header.frame_id = "map";
             new_pose.header.stamp = this->now();
-            new_pose.pose.position.x = i * 0.1;
-            new_pose.pose.position.y = i * 0.1;
-            new_pose.pose.orientation.w = 1.0;
+            new_pose.pose.position.x = p.x;
+            new_pose.pose.position.y = p.y;
+            new_pose.pose.orientation.w = p.theta;
             path_msg.poses.push_back(new_pose);
 
-            path_msg.header.stamp = this->now();
             this->path_pub_->publish(path_msg);
           }
           result->success=true;
           break; // Au lieu de break, il faut modif feedback pour avoir un Path, et continuer la recherche avec une cond d'amelioration. Pdt ce tps le client à une certaine patience -> cancel l'action si le premier path suffisant.
         }
       }
-      std::swap(&tree_a, &tree_b);
-
-      // TODO: tree visualisation? ou edge points?
+      std::swap(tree_a, tree_b);
 
       feedback->iterations++;
       goal_handle->publish_feedback(feedback);
@@ -72,7 +71,6 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
     if (rclcpp::ok())
     {
         goal_handle->succeed(result);
-        // TODO: correctly cleanup interrupted computation?
         RCLCPP_INFO(this->get_logger(), "Goal achieved !");
     }
 }

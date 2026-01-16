@@ -9,7 +9,7 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
-find_package(nav_msgs REQUIRED) 
+find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(robmob_interfaces REQUIRED)
 
@@ -36,8 +36,10 @@ install(
   DIRECTORY include/
   DESTINATION include
 )
-install(TARGETS planner_node
-  DESTINATION lib/${PROJECT_NAME})
+install(
+  TARGETS planner_node
+  DESTINATION lib/${PROJECT_NAME}
+)
 # install(DIRECTORY
 #   launch
 #   DESTINATION share/${PROJECT_NAME}/

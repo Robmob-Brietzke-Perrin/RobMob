@@ -3,6 +3,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp_action/rclcpp_action.hpp"
+
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
@@ -10,7 +11,6 @@
 #include "rrt_connect_planner/rrt_connect.hpp"
 #include "rrt_connect_planner/map_utils.hpp"
 #include "robmob_interfaces/action/compute_path.hpp"
-
 
 constexpr int ALGORITHM_RATE = 10;
 
@@ -32,8 +32,8 @@ public:
         {
             // Use mutex so that this does not interfere with the action (in another thread)
             std::lock_guard<std::mutex> lock(map_mutex_);
-            // TODO: inflate map?
-            latest_map_ = std::move(msg);
+            latest_map_ = inflate_map(msg, radius);
+            map::init(latest_map_.info.resolution, pos(latest_map_.info.origin.x, latest_map_.info.origin.y));
         };
         map_sub_ = this->create_subscription<OccupancyGrid>("/map"/*TODO: find where to get the map*/, 10, map_callback);
 
