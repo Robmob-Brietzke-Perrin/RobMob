@@ -59,6 +59,11 @@ class Tree
         return path;
     }
 
+    void add_TreeNode(TreeNode point)
+    {
+        l_Point.push_back(point);
+    }
+
     std::vector<TreeNode> get_L_Point()
     {
         return l_Point;
@@ -157,8 +162,7 @@ class RRT
         float unew;
         if (New_State(x,xnear,xnew,unew))
         {
-            //Tree.add.vertex();
-            //Tree.add.edge();
+            tree.add_TreeNode(xnew);
             if (xnew.get_pos().x == Get_goal().x && xnew.get_pos().y == Get_goal().y) // Vérifie s'il est possible d'atteindre le point final
                 return REACHED;//reached;
             else 
