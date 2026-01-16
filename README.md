@@ -83,11 +83,28 @@ Whether you chose to build directly in your machine or inside a container, you s
 
 ## Path finding algorithm
 <!-- TODO: complete this section -->
-RRT-connect
+We chose to use RRT for it's beauty and efficiency.
+
+
+![](images/image.png "Examples")
+
+As one may already know, RRT (Rapidly-exploring Random Trees) works as follows :
++ Sets a starting point
++ Randomly choses a point
++ Tests if a step in the direction of the said point is reachable
++ Adds the point to the tree if reachable
++ Checks if the goal is reached
+
+Then iterate, however RRT-connect has one slight change. There are 2 separate starting points and it alternates between the two trees.
+
+The system we are going for is based of an inflated occupancygrid (to do some avoidance) that is provided by the SLAM.
 
 ## Law of command$
 <!-- TODO: complete this section -->
 
+Here we have the path provided by RRT-connect, which will follow with a trajectory control. Meaning a spring-like system which will make the turtlebot follow the trail.
+
+On the side of that we will have an avoidance system that will act as an other repulsive force depending on how close the robot is from the obstacle.
 ## Autonomous exploration
 <!-- TODO: complete this section -->
 
