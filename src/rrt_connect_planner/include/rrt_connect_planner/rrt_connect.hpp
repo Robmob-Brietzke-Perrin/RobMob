@@ -25,12 +25,18 @@ class TreeNode
     Point pose;
 
     public:
+     TreeNode(){}
+     TreeNode(float x, float y) {set_pos(x, y);} 
      void set_point(TreeNode point)
      {
         this->parent = point.parent;
         this->set_pos(point.get_pos().x,point.get_pos().y);
      }
     
+     void set_parent(std::shared_ptr<TreeNode> point)
+     {
+        this->parent = point;
+     }
      void set_pos(float x,float y)
      {
         this->pose.x = x;
