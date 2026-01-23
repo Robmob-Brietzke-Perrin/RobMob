@@ -99,14 +99,16 @@ Then iterate, however RRT-connect has one slight change. There are 2 separate st
 
 The system we are going for is based of an inflated occupancygrid (to do some avoidance) that is provided by the SLAM.
 
-## Law of command$
+## Law of command
 <!-- TODO: complete this section -->
 
 Here we have the path provided by RRT-connect, which will follow with a trajectory control. Meaning a spring-like system which will make the turtlebot follow the trail.
 
-On the side of that we will have an avoidance system that will act as an other repulsive force depending on how close the robot is from the obstacle.
-## Autonomous exploration
-<!-- TODO: complete this section -->
-
 ## Obstacle avoidance
 <!-- TODO: complete this section -->
+
+
+On the side of the law of command we will have an avoidance system that will act as an other repulsive force depending on how close the robot is from the obstacle. To do so we will use the lidar to detect and change the course of the robot.
+## Autonomous exploration
+<!-- TODO: complete this section -->
+Now that the robot can freely move in a known environement, we can use a simple program to make the robot wander util it has found something worthy of attention. 
