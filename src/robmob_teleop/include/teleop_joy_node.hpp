@@ -33,7 +33,7 @@ private:
     rclcpp::Publisher<TwistStamped>::SharedPtr cmd_vel_pub_;
 #endif
 #ifdef ROS_DISTRO_HUMBLE
-    rclcpp::Publisher<TwistStamped>::SharedPtr cmd_vel_pub_;
+    rclcpp::Publisher<Twist>::SharedPtr cmd_vel_pub_;
 #endif
     rclcpp::Subscription<Joy>::SharedPtr joy_sub_;
 };

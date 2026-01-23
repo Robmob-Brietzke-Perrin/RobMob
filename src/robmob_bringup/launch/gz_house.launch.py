@@ -5,7 +5,7 @@ from launch_ros.substitutions import FindPackageShare
 from launch_ros.actions import Node
 
 def generate_launch_description():
-
+  
     rviz_arg = DeclareLaunchArgument(
         'use_rviz',
         default_value='True'
