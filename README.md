@@ -112,3 +112,10 @@ On the side of the law of command we will have an avoidance system that will act
 ## Autonomous exploration
 <!-- TODO: complete this section -->
 Now that the robot can freely move in a known environement, we can use a simple program to make the robot wander util it has found something worthy of attention. 
+
+note pour le rendu :
+ajouter la possibilité de cliquer sur rvizz pour set un goal
+modifier pour que le départ soit toujours la position du robot
+dans le rendu final il faut l'archi sous forme de diapo et tout autre graphe dispo
+obstacle avoidance est optionnelle donc pas a prioriser
+penser a soit passer par l'odom et la conversion dans le reel ou de passer par la map et son referentiel
