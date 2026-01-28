@@ -11,7 +11,6 @@
 #include "nav_msgs/msg/occupancy_grid.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 
-
 #include "robmob_interfaces/action/compute_path.hpp"
 #include "rrt_connect_planner/map_helper.hpp"
 #include "rrt_connect_planner/rrt_connect.hpp"
@@ -19,33 +18,44 @@
 class PlannerNode : public rclcpp::Node
 {
 public:
-    using ComputePath = robmob_interfaces::action::ComputePath;
-    using GoalHandleComputePath = rclcpp_action::ServerGoalHandle<ComputePath>;
-
-    PlannerNode();
+  PlannerNode();
 
 private:
-    // Callbacks
-    void map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg);
-    rclcpp_action::GoalResponse handle_goal(const rclcpp_action::GoalUUID & uuid, std::shared_ptr<const ComputePath::Goal> goal);
-    rclcpp_action::CancelResponse handle_cancel(const std::shared_ptr<GoalHandleComputePath> goal_handle);
-    void handle_accepted(const std::shared_ptr<GoalHandleComputePath> goal_handle);
-    
-    // Main loop (in action thread)
-    void execute(const std::shared_ptr<GoalHandleComputePath> goal_handle);
+  using Path = nav_msgs::msg::Path;
+  using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
+  using ComputePath = robmob_interfaces::action::ComputePath;
+  using GoalHandleComputePath = rclcpp_action::ServerGoalHandle<ComputePath>;
 
-    // ROS Comms
-    rclcpp_action::Server<ComputePath>::SharedPtr compute_path_server_;
-    rclcpp::Subscription<nav_msgs::msg::OccupancyGrid>::SharedPtr map_sub_;
-    rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
+  // Callbacks
+  void map_callback(const OccupancyGrid::SharedPtr msg);
 
-    // Helpers & Data
-    MapHelper map_helper_;
-    std::mutex map_mutex_;
-    
-    // Params
-    float robot_radius_;
-    int max_iterations_;
+  rclcpp_action::GoalResponse handle_goal(
+    const rclcpp_action::GoalUUID & uuid,
+    std::shared_ptr<const ComputePath::Goal> goal);
+
+  rclcpp_action::CancelResponse handle_cancel(
+    const std::shared_ptr<GoalHandleComputePath> goal_handle);
+
+  void handle_accepted(
+    const std::shared_ptr<GoalHandleComputePath> goal_handle);
+
+  // Main loop (in action thread)
+  void execute(const std::shared_ptr<GoalHandleComputePath> goal_handle);
+
+  // ROS Comms
+  ComputePath feedback_msg_;
+  rclcpp_action::Server<ComputePath>::SharedPtr compute_path_server_;
+  rclcpp::Subscription<OccupancyGrid>::SharedPtr map_sub_;
+  rclcpp::Publisher<Path>::SharedPtr path_pub_; // Only for visualization
+
+  // Helpers & Data
+  MapHelper map_helper_;
+  std::mutex map_mutex_;
+
+  // Params
+  float robot_radius_;
+  int max_iterations_;
+  bool verbose_;
 };
 
 #endif // RRT_CONNECT_PLANNER__PLANNER_NODE_HPP

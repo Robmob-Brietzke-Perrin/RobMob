@@ -30,7 +30,11 @@ ament_target_dependencies(
 
 install(
   DIRECTORY include/
-  DESTINATION include
+  DESTINATION share/${PROJECT_NAME}/include
+)
+install(
+  DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
 )
 install(
   TARGETS planner_node

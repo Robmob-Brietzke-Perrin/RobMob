@@ -7,7 +7,7 @@ uint32 max_tree_size 128
 
 ---
 # Result
-nav_msgs/Path path
+nav_msgs/Path fin_path
 bool success false
 
 ---
@@ -15,3 +15,4 @@ bool success false
 uint32 iterations
 uint32 tree_start_size
 uint32 tree_goal_size
+nav_msgs/Path inter_path

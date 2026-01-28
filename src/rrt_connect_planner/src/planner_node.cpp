@@ -2,16 +2,19 @@
 
 using namespace std::placeholders;
 
-PlannerNode::PlannerNode() : Node("rrt_planner_node")
+PlannerNode::PlannerNode()
+  : Node("rrt_planner_node")
 {
     // Ros parameters
     this->declare_parameter("robot_radius", 0.3f);
     this->declare_parameter("max_iterations", 10000);
+    this-declare_parameter("verbose", true);
 
     robot_radius_ = this->get_parameter("robot_radius").as_double();
     max_iterations_ = this->get_parameter("max_iterations").as_int();
+    verbose_ = this->get_parameter("verbose").as_bool();
 
-    // Abonnement à la Map
+    // Subscription to map
     // QoS TransientLocal pour recevoir la map même si publiée avant le lancement du node
     rclcpp::QoS map_qos(1);
     map_qos.reliable();
@@ -19,9 +22,14 @@ PlannerNode::PlannerNode() : Node("rrt_planner_node")
     map_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
         "map", map_qos, std::bind(&PlannerNode::map_callback, this, _1));
 
-    // Publisher pour visualiser le chemin (utile pour debug dans RViz)
-    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("plan", 10);
+    // Visualization path publisher
+    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("Path", 10);
 
+    feedback_msg_.iterations = 0;
+    feedback_msg_.tree_size_a = 0;
+    feedback_msg_.tree_size_b = 0;
+    feedback_msg_.inter_path = nullptr;
+  
     // Initialisation de l'Action Server
     compute_path_server_ = rclcpp_action::create_server<ComputePath>(
         this,
@@ -33,10 +41,10 @@ PlannerNode::PlannerNode() : Node("rrt_planner_node")
     RCLCPP_INFO(this->get_logger(), "RRT Connect Planner Initialized");
 }
 
-void PlannerNode::map_callback(const nav_msgs::msg::OccupancyGrid::SharedPtr msg)
+void PlannerNode::map_callback(const OccupancyGrid::SharedPtr msg)
 {
     std::lock_guard<std::mutex> lock(map_mutex_);
-    RCLCPP_INFO(this->get_logger(), "Map received via callback");
+    RCLCPP_INFO(this->get_logger(), "Map received");
 
     map_helper_.initialize(*msg);
     map_helper_.inflate_obstacles(robot_radius_);
@@ -46,7 +54,6 @@ rclcpp_action::GoalResponse PlannerNode::handle_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const ComputePath::Goal> goal)
 {
-    // Refuser si la map n'est pas prête
     if (map_helper_.get_state() != MapHelper::INFLATED) {
         RCLCPP_WARN(this->get_logger(), "Rejecting goal: Map not ready yet");
         return rclcpp_action::GoalResponse::REJECT;
@@ -67,7 +74,6 @@ rclcpp_action::CancelResponse PlannerNode::handle_cancel(
 
 void PlannerNode::handle_accepted(const std::shared_ptr<GoalHandleComputePath> goal_handle)
 {
-    // Exécution dans un thread séparé pour ne pas bloquer le thread principal ROS
     std::thread{std::bind(&PlannerNode::execute, this, _1), goal_handle}.detach();
 }
 
@@ -81,73 +87,72 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
     std::unique_lock<std::mutex> lock(map_mutex_);
     RRTConnect rrt_connect(map_helper_);
 
-    // Vérification: Start et Goal valides ?
-    if (!map_helper_.is_free(goal->start.pose) || !map_helper_.is_free(goal->goal.pose)) {
+    if (!map_helper_.is_free(goal->start.pose) ||
+        !map_helper_.is_free(goal->goal.pose)) {
         RCLCPP_ERROR(this->get_logger(), "Start or Goal is inside an obstacle");
         result->success = false;
         goal_handle->abort(result);
         return;
     }
-    lock.unlock();
+    lock.unlock(); // FIXME: move this if using map later
 
-    // Initialisation des arbres
+    // Initialize trees
     Tree tree_start, tree_goal;
     tree_start.add_node(goal->start.pose, nullptr);
     tree_goal.add_node(goal->goal.pose, nullptr);
 
+    // Interchangeble buffers
     Tree* tree_a = &tree_start;
     Tree* tree_b = &tree_goal;
 
     bool success = false;
-    nav_msgs::msg::Path final_path;
-
-    // --- 2. Boucle Principale ---
+    Path final_path;
     auto start_time = this->now();
     int iteration = 0;
-
     for(; iteration < max_iterations_ && rclcpp::ok(); ++iteration)
     {
-        // Check annulation
-        if (goal_handle->is_canceling()) {
-            result->success = false;
-            goal_handle->canceled(result);
-            RCLCPP_INFO(this->get_logger(), "Goal canceled");
-            return;
-        }
+      // Check if cancel
+      if (goal_handle->is_canceling()) {
+          result->success = false;
+          goal_handle->canceled(result);
+          RCLCPP_INFO(this->get_logger(), "Goal canceled");
+          return;
+      }
 
-        // --- Logique RRT ---
-        Pose q_rand = rrt_connect.random_config();
-        if (iteration % 100 == 0) {
-            RCLCPP_INFO(this->get_logger(), "Iter %d: Random point (%.2f, %.2f)", 
-                iteration, q_rand.position.x, q_rand.position.y);
-        }
-        std::shared_ptr<TreeNode> q_new_node;
+      // Actual RRT algorithm
+      Pose q_rand = rrt_connect.random_config();
+      if (verbose_ && iteration % 100 == 0) {
+          RCLCPP_INFO(this->get_logger(), "Iter %d: Random point (%.2f, %.2f)", 
+              iteration, q_rand.position.x, q_rand.position.y);
+      }
+      std::shared_ptr<TreeNode> q_new_node;
 
-        if(rrt_connect.extend(*tree_a, q_rand, q_new_node) != RRTConnect::TRAPPED)
-        {
-            std::shared_ptr<TreeNode> q_connect_node;
-            if(rrt_connect.connect(*tree_b, q_new_node->get_pose(), q_connect_node) == RRTConnect::REACHED)
-            {
-                // Reconstitution du chemin
-                if (tree_a == &tree_start)
-                    final_path = rrt_connect.get_path(q_new_node, q_connect_node);
-                else
-                    final_path = rrt_connect.get_path(q_connect_node, q_new_node); // Inversion si swap
+      if(rrt_connect.extend(*tree_a, q_rand, q_new_node) != RRTConnect::TRAPPED)
+      {
+          std::shared_ptr<TreeNode> q_connect_node;
+          if(tree_a == &tree_a) feedback_msg_.tree_size_a++;
+          if(rrt_connect.connect(*tree_b, q_new_node->get_pose(), q_connect_node) == RRTConnect::REACHED)
+          {
+              // Get path from connected trees (from start to goal)
+              if (tree_a == &tree_start)
+                  final_path = rrt_connect.get_path(q_new_node, q_connect_node);
+              else
+                  final_path = rrt_connect.get_path(q_connect_node, q_new_node); // Inversion if swaped
 
-                success = true;
-                break;
-            }
-        }
-        // TODO: reduce jittering: try skipping points iteratively -> less points, direct, but sharp turns
-        // -> Send traj as first valid in feedback
-        // -> Continue action to try to smooth out the path with elastic band = minimiser longueur chemin + maximiser distance aux obstacles en régression linéaire.
+              success = true;
+              feedback_msg_.inter_path = final_path;
+              break;
+          }
+      }
+      // TODO: reduce jittering: try skipping points iteratively -> less points, direct, but sharp turns
+      // -> Send traj as first valid in feedback
+      // -> Continue action to try to smooth out the path with elastic band = minimiser longueur chemin + maximiser distance aux obstacles en régression linéaire.
 
-        // Swap
-        std::swap(tree_a, tree_b);
+      // Swap
+      std::swap(tree_a, tree_b);
 
-        // Optional: Feedback (pour voir la progression)
-        // auto feedback = std::make_shared<ComputePath::Feedback>();
-        // goal_handle->publish_feedback(feedback);
+      feedback_msg_.iterations = iteration;
+      goal_handle->publish_feedback(feedback_msgs_);
     }
 
     for(; iteration < max_iterations_ && rclcpp::ok(); ++iteration)
@@ -169,7 +174,8 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
         final_path.header.frame_id = "map";
 
         // Publication pour debug/visu
-        path_pub_->publish(final_path);
+        if(verbose_)
+          path_pub_->publish(final_path);
 
         result->path = final_path;
         result->success = true;
