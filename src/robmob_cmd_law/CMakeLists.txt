@@ -5,22 +5,42 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
+# Differentiate target
+if("$ENV{ROS_DISTRO}" STREQUAL "jazzy")
+  message(STATUS "Building for ROS 2 Jazzy (Gazebo Harmonic)")
+  add_compile_definitions(ROS_DISTRO_JAZZY)
+
+elseif("$ENV{ROS_DISTRO}" STREQUAL "humble")
+  message(STATUS "Building for ROS 2 Humble (Gazebo Fortress)")
+  add_compile_definitions(ROS_DISTRO_HUMBLE)
+
+else()
+  message(WARNING "Unknown ROS_DISTRO: $ENV{ROS_DISTRO}. Defaulting to Humble build.")
+  add_compile_definitions(ROS_DISTRO_HUMBLE)
+endif()
+
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(robmob_interfaces REQUIRED)
 
-add_executable(cmd_law_node src/cmd_law_node.cpp)
-target_include_directories(cmd_law_node PUBLIC
+add_library(cmd_law_node SHARED
+  src/fibonacci_cmd_law_node.cpp)
+target_include_directories(cmd_law_node PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_features(cmd_law_node PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
-ament_target_dependencies(
+target_compile_definitions(cmd_law_node
+  PRIVATE "ACTION_TUTORIALS_CPP_BUILDING_DLL")
+ament_target_dependencies(cmd_law_node
+  "action_tutorials_interfaces"
+  "rclcpp"
+  "rclcpp_action"
+  "rclcpp_components")
+rclcpp_components_register_node(cmd_law_node PLUGIN "action_tutorials_cpp::FibonacciActionClient" EXECUTABLE fibonacci_cmd_law_node)#TODO:Remplacer 
+install(TARGETS
   cmd_law_node
-  "robmob_interfaces"
-)
-
-install(TARGETS cmd_law_node
-  DESTINATION lib/${PROJECT_NAME})
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

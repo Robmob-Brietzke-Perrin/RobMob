@@ -1,27 +1,69 @@
-#ifndef CMD_LAW_NODE_HPP
-#define CMD_LAW_NODE_HPP
+#ifndef ROBMOB_CMD_LAW__CMD_LAW_NODE_HPP
+#define ROBMOB_CMD_LAW__CMD_LAW_NODE_HPP
 #ifdef ROS_DISTRO_JAZZY
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #endif
 #ifdef ROS_DISTRO_HUMBLE
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #endif
+#include "nav_msgs/msg/path.hpp"
+#include "rclcpp/rclcpp.hpp"
+#include "robmob_interfaces/action/compute_path.hpp"
+#include "rclcpp_action/rclcpp_action.hpp"
+#include <functional>
 
-class Obstacle_avoidance //recevies the cmdvel and check/modify the cmdvel if the robot will collide also recalculates the path by updating the slam and using RRT-Connect
+
+class CmdLawNode : public rclcpp::Node
 {
-    #ifdef ROS_DISTRO_JAZZY
-        void Send_cmd(rclcpp::Publisher<TwistStamped>::SharedPtr cmd_vel_pub_)
-    #endif
-    #ifdef ROS_DISTRO_HUMBLE
-        void Send_cmd(rclcpp::Publisher<Twist>::SharedPtr cmd_vel_pub_)
-    #endif
+    public:
+        CmdLawNode();
+        //sub a odom ou un truc comme ca
+        void send_goal()
+        {
+          using namespace std::placeholders;
+            
+          if (!this->client_ptr_->wait_for_action_server()) {
+            RCLCPP_ERROR(this->get_logger(), "Action server not available after waiting");
+            rclcpp::shutdown();
+          }
+      
+          auto goal_msg = ComputePath::Goal();
+      
+          auto send_goal_options = rclcpp_action::Client<ComputePath>::SendGoalOptions();
 
-    //look template online to see how to sub to an action and sub to the interface 
+          send_goal_options.goal_response_callback =
+            std::bind(&CmdLawNode::goal_response_callback, this, _1);
+
+          send_goal_options.feedback_callback =
+            std::bind(&CmdLawNode::feedback_callback, this, _1, _2);
+
+          send_goal_options.result_callback =
+            std::bind(&CmdLawNode::result_callback, this, _1);
+
+          this->client_ptr_->async_send_goal(goal_msg, send_goal_options);
+        }
+        
+    private:
+        #ifdef ROS_DISTRO_JAZZY
+        using TwistCmd = geometry_msgs::msg::TwistStamped;
+        #endif
+        #ifdef ROS_DISTRO_HUMBLE
+            using TwistCmd = geometry_msgs::msg::Twist;
+        #endif  
+        using Path = naw_msgs::msg::Path;
+        using ComputePath = robmob_interfaces::action::ComputePath;
+        using GoalHandleComputePath = rclcpp_action::ClientGoalHandle<ComputePath>;
+
+        rclcpp_action::Client<ComputePath>::SharedPtr compute_path_client_;
+        
+        CmdLawNode goal_response_callback(){};
+
+        void sendcmd_vel();
+    //
 };
 
-class Traj_folowing // uses the RTT action callback to get the path and proceeds to send a contiuous stream of cmd_vels influenced by the dist to it's suposed position
-{
-    //Uses the obstacle avoidance send_cmd function to send cmd_vels
 
-    //calculates the cmd_vel using the dist between it's supposed position and it's current position therefore it need to sub to the turtlebot odom
-};
+
+
+
+#endif // ROBMOB_CMD_LAW__CMD_LAW_NODE_HPP
