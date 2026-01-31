@@ -14,28 +14,27 @@ using namespace sensor_msgs::msg;
 using namespace geometry_msgs::msg;
 using namespace std::chrono_literals;
 
-class TeleopJoy : public rclcpp::Node
-{
-public:
-    TeleopJoy();
+class TeleopJoy : public rclcpp::Node {
+ public:
+  TeleopJoy();
 
-private:
-    Joy joy_msg_;
+ private:
+  Joy joy_msg_;
 #ifdef ROS_DISTRO_JAZZY
-    TwistStamped cmd_vel_msg_;
+  TwistStamped cmd_vel_msg_;
 #endif
 #ifdef ROS_DISTRO_HUMBLE
-    Twist cmd_vel_msg_;
+  Twist cmd_vel_msg_;
 #endif
 
-    rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr timer_;
 #ifdef ROS_DISTRO_JAZZY
-    rclcpp::Publisher<TwistStamped>::SharedPtr cmd_vel_pub_;
+  rclcpp::Publisher<TwistStamped>::SharedPtr cmd_vel_pub_;
 #endif
 #ifdef ROS_DISTRO_HUMBLE
-    rclcpp::Publisher<Twist>::SharedPtr cmd_vel_pub_;
+  rclcpp::Publisher<Twist>::SharedPtr cmd_vel_pub_;
 #endif
-    rclcpp::Subscription<Joy>::SharedPtr joy_sub_;
+  rclcpp::Subscription<Joy>::SharedPtr joy_sub_;
 };
 
 #endif
