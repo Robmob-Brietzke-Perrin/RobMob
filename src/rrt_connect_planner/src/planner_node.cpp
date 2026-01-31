@@ -1,39 +1,26 @@
 #include "rrt_connect_planner/planner_node.hpp"
+#include "rrt_connect_planner/rrt_connect.hpp"
 
 using namespace std::placeholders;
 
-PlannerNode::PlannerNode()
-  : Node("rrt_planner_node")
+PlannerNode::PlannerNode() : Node("rrt_planner_node")
 {
-    // Ros parameters
     this->declare_parameter("robot_radius", 0.3f);
-    this->declare_parameter("max_iterations", 10000);
-    this-declare_parameter("verbose", true);
+    this->declare_parameter("verbose", true);
 
     robot_radius_ = this->get_parameter("robot_radius").as_double();
-    max_iterations_ = this->get_parameter("max_iterations").as_int();
     verbose_ = this->get_parameter("verbose").as_bool();
 
-    // Subscription to map
-    // QoS TransientLocal pour recevoir la map même si publiée avant le lancement du node
     rclcpp::QoS map_qos(1);
     map_qos.reliable();
     map_qos.durability_volatile();
     map_sub_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
         "map", map_qos, std::bind(&PlannerNode::map_callback, this, _1));
 
-    // Visualization path publisher
-    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("Path", 10);
+    path_pub_ = this->create_publisher<nav_msgs::msg::Path>("path", 10);
 
-    feedback_msg_.iterations = 0;
-    feedback_msg_.tree_size_a = 0;
-    feedback_msg_.tree_size_b = 0;
-    feedback_msg_.inter_path = nullptr;
-  
-    // Initialisation de l'Action Server
     compute_path_server_ = rclcpp_action::create_server<ComputePath>(
-        this,
-        "compute_path",
+        this, "compute_path",
         std::bind(&PlannerNode::handle_goal, this, _1, _2),
         std::bind(&PlannerNode::handle_cancel, this, _1),
         std::bind(&PlannerNode::handle_accepted, this, _1));
@@ -44,10 +31,9 @@ PlannerNode::PlannerNode()
 void PlannerNode::map_callback(const OccupancyGrid::SharedPtr msg)
 {
     std::lock_guard<std::mutex> lock(map_mutex_);
-    RCLCPP_INFO(this->get_logger(), "Map received");
-
     map_helper_.initialize(*msg);
     map_helper_.inflate_obstacles(robot_radius_);
+    RCLCPP_INFO(this->get_logger(), "Map updated and inflated");
 }
 
 rclcpp_action::GoalResponse PlannerNode::handle_goal(
@@ -55,11 +41,13 @@ rclcpp_action::GoalResponse PlannerNode::handle_goal(
     std::shared_ptr<const ComputePath::Goal> goal)
 {
     if (map_helper_.get_state() != MapHelper::INFLATED) {
-        RCLCPP_WARN(this->get_logger(), "Rejecting goal: Map not ready yet");
+        RCLCPP_WARN(this->get_logger(), "Rejecting goal: Map not ready");
         return rclcpp_action::GoalResponse::REJECT;
     }
-
-    RCLCPP_INFO(this->get_logger(), "Received goal request");
+    if(!map_helper_.is_free(goal->goal)){
+        RCLCPP_WARN(this->get_logger(), "Rejecting goal: Goal is not accessible !");
+        return rclcpp_action::GoalResponse::REJECT;
+    }
     (void)uuid;
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
@@ -67,7 +55,6 @@ rclcpp_action::GoalResponse PlannerNode::handle_goal(
 rclcpp_action::CancelResponse PlannerNode::handle_cancel(
     const std::shared_ptr<GoalHandleComputePath> goal_handle)
 {
-    RCLCPP_INFO(this->get_logger(), "Received request to cancel goal");
     (void)goal_handle;
     return rclcpp_action::CancelResponse::ACCEPT;
 }
@@ -77,114 +64,120 @@ void PlannerNode::handle_accepted(const std::shared_ptr<GoalHandleComputePath> g
     std::thread{std::bind(&PlannerNode::execute, this, _1), goal_handle}.detach();
 }
 
+nav_msgs::msg::Path PlannerNode::to_ros_path(const std::vector<Point>& points) 
+{
+    nav_msgs::msg::Path path;
+    path.header.frame_id = "map";
+    path.header.stamp = this->now();
+
+    for (const auto& p : points) {
+        geometry_msgs::msg::PoseStamped ps;
+        // ps.header.frame_id = "map";
+        ps.pose.position.x = p.x;
+        ps.pose.position.y = p.y;
+        ps.pose.orientation.w = 1.0; 
+        // FIXME: ajouter l'orientation (peut-être vers le point n+1?)
+        path.poses.push_back(ps);
+    }
+    return path;
+}
+
 void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_handle)
 {
-    RCLCPP_INFO(this->get_logger(), "Executing RRT Connect...");
-
     const auto goal = goal_handle->get_goal();
     auto result = std::make_shared<ComputePath::Result>();
+    rclcpp::Rate debug_rate(1.2); // 0.5s entre chaque étape pour bien voir dans RViz
 
-    std::unique_lock<std::mutex> lock(map_mutex_);
-    RRTConnect rrt_connect(map_helper_);
+    RCLCPP_INFO(this->get_logger(), "New Path Request: Start(%.2f, %.2f) -> Goal(%.2f, %.2f)", 
+                goal->start.position.x, goal->start.position.y, goal->goal.position.x, goal->goal.position.y);
 
-    if (!map_helper_.is_free(goal->start.pose) ||
-        !map_helper_.is_free(goal->goal.pose)) {
-        RCLCPP_ERROR(this->get_logger(), "Start or Goal is inside an obstacle");
-        result->success = false;
+    // 1. Initialisation & Check Collision
+    auto collision_checker = [this](double x, double y) -> bool {
+        return this->map_helper_.is_free(x, y);
+    };
+
+    {
+        std::lock_guard<std::mutex> lock(map_mutex_);
+        if (!map_helper_.is_free(goal->start.position.x, goal->start.position.y) || 
+            !map_helper_.is_free(goal->goal.position.x, goal->goal.position.y)) {
+            RCLCPP_ERROR(this->get_logger(), "Action Failed: Start or Goal is in obstacle!");
+            goal_handle->abort(result);
+            return;
+        }
+    }
+
+    RRTConnect rrt(collision_checker, 
+                   map_helper_.get_min_x(), map_helper_.get_max_x(),
+                   map_helper_.get_min_y(), map_helper_.get_max_y());
+
+    // 2. Phase de Recherche RRT-Connect
+    Tree tree_start, tree_goal;
+    tree_start.add_node({goal->start.position.x, goal->start.position.y}, nullptr);
+    tree_goal.add_node({goal->goal.position.x, goal->goal.position.y}, nullptr);
+    
+    std::vector<Point> current_path;
+    bool success = false;
+    Tree *tree_a = &tree_start, *tree_b = &tree_goal;
+
+    for (int i = 0; i < (int)goal->max_iterations && rclcpp::ok(); ++i) {
+        if (goal_handle->is_canceling()) {
+            goal_handle->canceled(result);
+            return;
+        }
+
+        Point q_rand = rrt.random_config();
+        std::shared_ptr<TreeNode> q_new, q_conn;
+
+        if (rrt.extend(*tree_a, q_rand, q_new) != RRTConnect::TRAPPED) {
+            if (rrt.connect(*tree_b, q_new->get_point(), q_conn) == RRTConnect::REACHED) {
+                current_path = (tree_a == &tree_start) ? rrt.get_path(q_new, q_conn) : rrt.get_path(q_conn, q_new);
+                success = true;
+                break;
+            }
+        }
+        std::swap(tree_a, tree_b);
+    }
+
+    if (!success) {
+        RCLCPP_WARN(this->get_logger(), "RRT Failed to find path");
         goal_handle->abort(result);
         return;
     }
-    lock.unlock(); // FIXME: move this if using map later
 
-    // Initialize trees
-    Tree tree_start, tree_goal;
-    tree_start.add_node(goal->start.pose, nullptr);
-    tree_goal.add_node(goal->goal.pose, nullptr);
+    // --- SÉQUENCE D'OPTIMISATION VISUELLE ---
+    auto publish_stage = [&](const std::string& label, const std::vector<Point>& path_pts) {
+        RCLCPP_INFO(this->get_logger(), "Stage: %s (Points: %zu)", label.c_str(), path_pts.size());
+        auto ros_path = to_ros_path(path_pts);
+        feedback_msg_.inter_path = ros_path;
+        goal_handle->publish_feedback(std::make_shared<ComputePath::Feedback>(feedback_msg_));
+        if (verbose_) {
+            path_pub_->publish(ros_path);
+            debug_rate.sleep();
+        }
+    };
 
-    // Interchangeble buffers
-    Tree* tree_a = &tree_start;
-    Tree* tree_b = &tree_goal;
+    // Étape A : Chemin Brut
+    publish_stage("Raw RRT Path", current_path);
 
-    bool success = false;
-    Path final_path;
-    auto start_time = this->now();
-    int iteration = 0;
-    for(; iteration < max_iterations_ && rclcpp::ok(); ++iteration)
-    {
-      // Check if cancel
-      if (goal_handle->is_canceling()) {
-          result->success = false;
-          goal_handle->canceled(result);
-          RCLCPP_INFO(this->get_logger(), "Goal canceled");
-          return;
-      }
+    // Étape B : Élagage (Pruning)
+    current_path = rrt.prune_path(current_path);
+    publish_stage("Pruned Path", current_path);
 
-      // Actual RRT algorithm
-      Pose q_rand = rrt_connect.random_config();
-      if (verbose_ && iteration % 100 == 0) {
-          RCLCPP_INFO(this->get_logger(), "Iter %d: Random point (%.2f, %.2f)", 
-              iteration, q_rand.position.x, q_rand.position.y);
-      }
-      std::shared_ptr<TreeNode> q_new_node;
+    // Étape C : Corner Smoothing (Injection de points)
+    current_path = rrt.smooth_corners(current_path, 0.3); // max_cut_dist = 0.3m
+    publish_stage("Corner Smoothing", current_path);
+    current_path = rrt.smooth_corners(current_path, 0.3); // max_cut_dist = 0.3m
+    publish_stage("Corner Smoothing", current_path);
 
-      if(rrt_connect.extend(*tree_a, q_rand, q_new_node) != RRTConnect::TRAPPED)
-      {
-          std::shared_ptr<TreeNode> q_connect_node;
-          if(tree_a == &tree_a) feedback_msg_.tree_size_a++;
-          if(rrt_connect.connect(*tree_b, q_new_node->get_pose(), q_connect_node) == RRTConnect::REACHED)
-          {
-              // Get path from connected trees (from start to goal)
-              if (tree_a == &tree_start)
-                  final_path = rrt_connect.get_path(q_new_node, q_connect_node);
-              else
-                  final_path = rrt_connect.get_path(q_connect_node, q_new_node); // Inversion if swaped
+    // Étape D : Gradient Smoothing (Lissage final léger)
+    // current_path = rrt.smooth_path(current_path, 15);
+    // publish_stage("Final Gradient Smoothing", current_path);
 
-              success = true;
-              feedback_msg_.inter_path = final_path;
-              break;
-          }
-      }
-      // TODO: reduce jittering: try skipping points iteratively -> less points, direct, but sharp turns
-      // -> Send traj as first valid in feedback
-      // -> Continue action to try to smooth out the path with elastic band = minimiser longueur chemin + maximiser distance aux obstacles en régression linéaire.
-
-      // Swap
-      std::swap(tree_a, tree_b);
-
-      feedback_msg_.iterations = iteration;
-      goal_handle->publish_feedback(feedback_msgs_);
-    }
-
-    for(; iteration < max_iterations_ && rclcpp::ok(); ++iteration)
-    {
-      // Check annulation
-      if (goal_handle->is_canceling()) {
-          result->success = false;
-          goal_handle->canceled(result);
-          RCLCPP_INFO(this->get_logger(), "Goal canceled");
-          return;
-      }
-    }
-
-    // --- 3. Résultat ---
-    if (success) {
-        RCLCPP_INFO(this->get_logger(), "Path found with %d iterations", iteration);
-
-        final_path.header.stamp = this->now();
-        final_path.header.frame_id = "map";
-
-        // Publication pour debug/visu
-        if(verbose_)
-          path_pub_->publish(final_path);
-
-        result->path = final_path;
-        result->success = true;
-        goal_handle->succeed(result);
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Failed to find path after %d iterations", iteration);
-        result->success = false;
-        goal_handle->abort(result);
-    }
+    // 3. Résultat Final
+    result->fin_path = to_ros_path(current_path);
+    result->success = true;
+    goal_handle->succeed(result);
+    RCLCPP_INFO(this->get_logger(), "Path computation successful");
 }
 
 int main(int argc, char *argv[])
@@ -194,7 +187,6 @@ int main(int argc, char *argv[])
   rclcpp::shutdown();
   return 0;
 }
-
 
 /*
 

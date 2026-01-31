@@ -12,8 +12,11 @@ find_package(rclcpp_action REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(robmob_interfaces REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 add_executable(planner_node src/planner_node.cpp src/map_helper.cpp src/rrt_connect.cpp)
+add_executable(mock_robot_node src/mock_robot_node.cpp)
 target_include_directories(planner_node PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
@@ -28,21 +31,23 @@ ament_target_dependencies(
   robmob_interfaces
 )
 
+ament_target_dependencies(
+  mock_robot_node
+  rclcpp
+  rclcpp_action
+  geometry_msgs
+  tf2_ros
+  tf2_geometry_msgs
+  robmob_interfaces
+)
+
 install(
-  DIRECTORY include/
-  DESTINATION share/${PROJECT_NAME}/include
+  DIRECTORY include launch rviz
+  DESTINATION share/${PROJECT_NAME}
 )
 install(
-  DIRECTORY launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-)
-install(
-  TARGETS planner_node
+  TARGETS planner_node mock_robot_node
   DESTINATION lib/${PROJECT_NAME}
 )
-# install(DIRECTORY
-#   launch
-#   DESTINATION share/${PROJECT_NAME}/
-# )
 
 ament_package()
