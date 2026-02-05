@@ -22,25 +22,37 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(robmob_interfaces REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_action REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
-add_library(cmd_law_node SHARED
-  src/fibonacci_cmd_law_node.cpp)
-target_include_directories(cmd_law_node PRIVATE
+add_library(cmd_law_component SHARED
+  src/cmd_law_node.cpp)
+
+target_include_directories(cmd_law_component PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_compile_definitions(cmd_law_node
-  PRIVATE "ACTION_TUTORIALS_CPP_BUILDING_DLL")
-ament_target_dependencies(cmd_law_node
-  "action_tutorials_interfaces"
+  
+ament_target_dependencies(cmd_law_component
   "rclcpp"
   "rclcpp_action"
-  "rclcpp_components")
-rclcpp_components_register_node(cmd_law_node PLUGIN "action_tutorials_cpp::FibonacciActionClient" EXECUTABLE fibonacci_cmd_law_node)#TODO:Remplacer 
+  "rclcpp_components"
+  "robmob_interfaces") 
+
+rclcpp_components_register_node(cmd_law_component 
+  PLUGIN "cmd_law_node" 
+  EXECUTABLE cmd_law_node)
+
 install(TARGETS
+  cmd_law_component
   cmd_law_node
   ARCHIVE DESTINATION lib
   LIBRARY DESTINATION lib
   RUNTIME DESTINATION bin)
+  install(
+  DIRECTORY include/
+  DESTINATION include
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
