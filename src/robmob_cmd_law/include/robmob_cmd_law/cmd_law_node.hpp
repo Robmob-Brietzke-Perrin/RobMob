@@ -34,10 +34,8 @@ private:
     using ComputePath = robmob_interfaces::action::ComputePath;
     using GoalHandleComputePath = rclcpp_action::ClientGoalHandle<ComputePath>;
 
-    // Variables membres
     rclcpp_action::Client<ComputePath>::SharedPtr client_ptr_;
 
-    // Signatures de fonctions (Indispensable pour le std::bind)
     void goal_response_callback(const GoalHandleComputePath::SharedPtr & goal_handle);
     void feedback_callback(GoalHandleComputePath::SharedPtr, const std::shared_ptr<const ComputePath::Feedback> feedback);
     void result_callback(const GoalHandleComputePath::WrappedResult & result);

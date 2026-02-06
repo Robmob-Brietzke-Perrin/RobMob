@@ -10,7 +10,8 @@ CmdLawNode::CmdLawNode(const rclcpp::NodeOptions & options)
 
 void CmdLawNode::send_goal() 
 {
-    if (!this->client_ptr_->wait_for_action_server(std::chrono::seconds(10))) {
+    if (!this->client_ptr_->wait_for_action_server(std::chrono::seconds(10))) 
+    {
         RCLCPP_ERROR(this->get_logger(), "Action server not available");
         return;
     }
@@ -29,9 +30,12 @@ void CmdLawNode::send_goal()
 
 void CmdLawNode::goal_response_callback(const GoalHandleComputePath::SharedPtr & goal_handle)
 {
-    if (!goal_handle) {
+    if (!goal_handle) 
+    {
         RCLCPP_ERROR(this->get_logger(), "Goal was rejected by server");
-    } else {
+    } 
+    else 
+    {
         RCLCPP_INFO(this->get_logger(), "Goal accepted by server, waiting for result");
     }
 }
@@ -46,10 +50,13 @@ void CmdLawNode::feedback_callback(
 
 void CmdLawNode::result_callback(const GoalHandleComputePath::WrappedResult & result)
 {
-    if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
+    if (result.code == rclcpp_action::ResultCode::SUCCEEDED) 
+    {
         RCLCPP_INFO(this->get_logger(), "Success!");
         // TODO: follow traj
-    } else {
+    } 
+    else 
+    {
         RCLCPP_ERROR(this->get_logger(), "Action failed");
     }
 }
