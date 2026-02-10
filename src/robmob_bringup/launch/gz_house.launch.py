@@ -26,6 +26,17 @@ def generate_launch_description():
             launch_arguments={'use_sim_time':LaunchConfiguration('use_sim_time'), 'use_rviz': LaunchConfiguration('use_rviz')}.items()
         )
 
+    amcl_launch_dir = PathJoinSubstitution([FindPackageShare('robmob_bringup'), 'launch'])
+    amcl_launch = IncludeLaunchDescription(
+            PathJoinSubstitution([amcl_launch_dir, 'map_server_amcl.launch.py'])
+            )
+
+    rrt_launch_dir = PathJoinSubstitution([FindPackageShare('rrt_connect_planner'), 'launch'])
+    rrt_launch = IncludeLaunchDescription(
+            PathJoinSubstitution([rrt_launch_dir, 'deploy_rrt.launch.py'])
+            )
+
+
     joy_launch_dir = PathJoinSubstitution([FindPackageShare('robmob_teleop'), 'launch'])
     joy_launch = IncludeLaunchDescription(
             PathJoinSubstitution([joy_launch_dir, 'joystick.launch.py'])
@@ -33,5 +44,9 @@ def generate_launch_description():
 
     return LaunchDescription([
         rviz_arg, sim_time_arg,
-        gz_launch, carto_launch, joy_launch
+        gz_launch,
+        carto_launch,
+        amcl_launch,
+        joy_launch,
+        rrt_launch
     ])
