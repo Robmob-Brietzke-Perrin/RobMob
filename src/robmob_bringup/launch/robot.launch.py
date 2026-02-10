@@ -48,7 +48,8 @@ def generate_launch_description():
         executable='cmd_law_node',
         name='cmd_law_node',
         condition=IfCondition(LaunchConfiguration('autonomous')),
-        parameters=[{'use_sim_time': LaunchConfiguration('simulated')}]
+        parameters=[os.path.join(pkg_cmd, 'config', 'params.yaml'),
+                    {'use_sim_time': LaunchConfiguration('simulated')}]
     )
 
     # Teleoperation
