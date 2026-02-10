@@ -45,19 +45,19 @@ void CmdLawNode::send_goal()
     
     try {
         auto t = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-        goal_msg.start.header.frame_id = "map";
-        goal_msg.start.header.stamp = this->now();
-        goal_msg.start.pose.position.x = t.transform.translation.x;
-        goal_msg.start.pose.position.y = t.transform.translation.y;
-        goal_msg.start.pose.orientation = t.transform.rotation;
+        goal_msg.header.frame_id = "map";
+        goal_msg.header.stamp = this->now();
+        goal_msg.start.position.x = t.transform.translation.x;
+        goal_msg.start.position.y = t.transform.translation.y;
+        goal_msg.start.orientation = t.transform.rotation;
     } catch (const tf2::TransformException & ex) {
         RCLCPP_ERROR(this->get_logger(), "TF Error: %s", ex.what());
         return;
     }
 
-    goal_msg.goal = this->last_goal_pose_;
-    goal_msg.max_iterations = 1000;
-    goal_msg.max_tree_size = 500;
+    goal_msg.goal = this->last_goal_pose_.pose;
+    goal_msg.max_iterations = 32768;
+    goal_msg.max_tree_size = 16384;
 
     auto send_goal_options = rclcpp_action::Client<ComputePath>::SendGoalOptions();
     send_goal_options.goal_response_callback = std::bind(&CmdLawNode::goal_response_callback, this, _1);
@@ -78,14 +78,14 @@ void CmdLawNode::goal_response_callback(const GoalHandleComputePath::SharedPtr &
 
 void CmdLawNode::feedback_callback(GoalHandleComputePath::SharedPtr, const std::shared_ptr<const ComputePath::Feedback> feedback)
 {
-    (void)feedback; 
+    (void)feedback;
 }
 
 void CmdLawNode::result_callback(const GoalHandleComputePath::WrappedResult & result)
 {
     if (result.code == rclcpp_action::ResultCode::SUCCEEDED) {
         RCLCPP_INFO(this->get_logger(), "Chemin calculé ! Début du suivi.");
-        this->current_path_ = result.result->path;
+        this->current_path_ = result.result->fin_path;
         this->target_index_ = 0;
         this->path_following_active_ = true;
         this->control_timer_->reset(); 
