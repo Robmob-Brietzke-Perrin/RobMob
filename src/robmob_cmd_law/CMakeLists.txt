@@ -25,6 +25,8 @@ find_package(robmob_interfaces REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_action REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
+find_package(tf2_ros REQUIRED)
 
 add_library(cmd_law_component SHARED
   src/cmd_law_node.cpp)
@@ -37,6 +39,8 @@ ament_target_dependencies(cmd_law_component
   "rclcpp"
   "rclcpp_action"
   "rclcpp_components"
+  "tf2_ros"             
+  "tf2_geometry_msgs"
   "robmob_interfaces") 
 
 rclcpp_components_register_node(cmd_law_component 
