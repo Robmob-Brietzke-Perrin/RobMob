@@ -49,7 +49,7 @@ bool MapHelper::is_free(double x, double y)
   int index = get_index(mx, my);
   int8_t value = map_.data[index];
 
-  if (value == 0) {
+  if (value == 0 || value == -1) { // Accept unknown
       return true; 
   }
   return false;

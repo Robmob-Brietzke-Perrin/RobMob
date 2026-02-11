@@ -38,7 +38,7 @@ void PlannerNode::map_callback(const OccupancyGrid::SharedPtr msg)
 {
     std::lock_guard<std::mutex> lock(map_mutex_);
     map_helper_.initialize(*msg);
-    map_helper_.inflate_obstacles(robot_radius_);
+    // map_helper_.inflate_obstacles(robot_radius_);
     RCLCPP_INFO(this->get_logger(), "Map updated and inflated");
 }
 
@@ -52,10 +52,10 @@ rclcpp_action::GoalResponse PlannerNode::handle_goal(
         return rclcpp_action::GoalResponse::REJECT;
     }
     // check that goal request is accessible
-    if(!map_helper_.is_free(goal->goal)){
-        RCLCPP_WARN(this->get_logger(), "Rejecting goal: Goal is not accessible !");
-        return rclcpp_action::GoalResponse::REJECT;
-    }
+    // if(!map_helper_.is_free(goal->goal)){
+    //     RCLCPP_WARN(this->get_logger(), "Rejecting goal: Goal is not accessible !");
+    //     return rclcpp_action::GoalResponse::REJECT;
+    // }
     (void)uuid;
     return rclcpp_action::GoalResponse::ACCEPT_AND_EXECUTE;
 }
@@ -116,12 +116,16 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
     };
 
     std::lock_guard<std::mutex> lock(map_mutex_);
-    if (!map_helper_.is_free(goal->start.position.x, goal->start.position.y) || 
-        !map_helper_.is_free(goal->goal.position.x, goal->goal.position.y)) {
-        RCLCPP_ERROR(this->get_logger(), "Action Failed: Start or Goal is in obstacle!");
-        goal_handle->abort(result);
-        return;
+    if (map_helper_.get_state() == MapHelper::INITIALIZED) {
+        RCLCPP_INFO(this->get_logger(), "Inflating map for new planning request...");
+        map_helper_.inflate_obstacles(robot_radius_);
     }
+    // if (!map_helper_.is_free(goal->start.position.x, goal->start.position.y) || 
+    //     !map_helper_.is_free(goal->goal.position.x, goal->goal.position.y)) {
+    //     RCLCPP_ERROR(this->get_logger(), "Action Failed: Start or Goal is in obstacle!");
+    //     goal_handle->abort(result);
+    //     return;
+    // }
 
     RRTConnect rrt(collision_checker, 
                    map_helper_.get_min_x(), map_helper_.get_max_x(),

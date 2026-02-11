@@ -1,0 +1,38 @@
+@startuml
+skinparam style strictuml
+
+participant "Orchestrator" as ORC
+participant "Gazebo / TF / Rviz" as ENV
+participant "Cartographer" as SLAM
+participant "FullTurnNode" as TURN
+participant "AutoExploNode" as EXPLO
+participant "MapSaver" as SAVE
+participant "AMCL / MapServer" as NAV
+
+== Phase 1: Initialisation ==
+ORC -> ENV : Démarrage environnement
+ORC -> SLAM : Lancement SLAM
+ORC -> TURN : Lancement rotation initiale (360°)
+TURN -> ENV : cmd_vel (rotation)
+TURN -> SLAM : Publication données LiDAR
+TURN -> ORC : Process Exit (Rotation finie)
+
+== Phase 2: Acquisition (Exploration) ==
+ORC -> EXPLO : Triggered by TURN exit
+loop Jusqu'à Timeout ou Map complète
+    EXPLO -> ENV : Analyse Scan & Pose
+    EXPLO -> SLAM : Analyse Map (Inconnu vs Libre)
+    EXPLO -> ENV : Publication goal_pose
+end
+EXPLO -> ORC : rclcpp::shutdown() (Process Exit)
+
+== Phase 3: Transition ==
+ORC -> SAVE : Triggered by EXPLO exit
+SLAM -> SAVE : Fournit la carte finale
+SAVE -> ORC : Sauvegarde map_generee.yaml
+ORC -> SLAM : Shutdown (Optionnel selon config)
+
+== Phase 4: Exploitation ==
+ORC -> NAV : Lancement avec map_generee.yaml
+NAV -> ENV : Localisation sur carte statique
+@enduml
