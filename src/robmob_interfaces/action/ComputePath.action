@@ -1,17 +1,16 @@
 # Goal
-geometry_msgs/PoseStamped start
-geometry_msgs/PoseStamped goal
+std_msgs/Header header
+geometry_msgs/Pose start
+geometry_msgs/Pose goal
 
-uint32 max_iterations 128
-uint32 max_tree_size 128
+uint32 max_iterations 32768
+uint32 max_tree_size 16384
 
 ---
 # Result
-nav_msgs/Path path
+nav_msgs/Path fin_path
 bool success false
 
 ---
 # Feedback
-uint32 iterations
-uint32 tree_start_size
-uint32 tree_goal_size
+nav_msgs/Path inter_path

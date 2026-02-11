@@ -1,0 +1,52 @@
+@startuml Architecture
+
+@startuml "Architecture"
+
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' TODO: complete this
+package "cmd_law" {
+
+}
+
+package "rrt_connect_planner"{
+  class planner_node {
+    + action : ComputePath
+    - execute()
+    - map_helper : MapHelper
+    - map_subscriber_
+    - path_publisher_
+  }
+  class MapHelper {
+    + initialize()
+    + inflate_obstacles()
+    - map_ : OccupancyGrid
+    - resolution_ : float
+  }
+  class TreeNode {
+    + get_pose() : Pose
+    + get_parent() : TreeNode
+    - pose_ : Pose
+    - parent_ : TreeNode
+  }
+  class Tree {
+    + add_node()
+    - nodes_
+  }
+  class RRTConnect {
+    + random_config() : Pose
+    + extend() : State
+    + connect() : State
+    + get_path() : Path
+    - map_helper_ : MapHelper
+  }
+  Tree *-- TreeNode
+  RRTConnect *-- MapHelper
+  planner_node *-- MapHelper
+  planner_node *-- RRTConnect
+}
+
+cmd_law .left.> rrt_connect_planner : "call action asynchronous"
+
+@enduml

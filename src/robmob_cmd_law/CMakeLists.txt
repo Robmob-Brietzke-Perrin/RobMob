@@ -44,7 +44,7 @@ ament_target_dependencies(cmd_law_component
   "robmob_interfaces") 
 
 rclcpp_components_register_node(cmd_law_component 
-  PLUGIN "cmd_law_node" 
+  PLUGIN "CmdLawNode" 
   EXECUTABLE cmd_law_node)
 
 install(TARGETS
@@ -56,6 +56,11 @@ install(TARGETS
   install(
   DIRECTORY include/
   DESTINATION include
+)
+
+install(
+  DIRECTORY config
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
