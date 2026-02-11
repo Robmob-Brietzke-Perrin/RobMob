@@ -43,7 +43,7 @@ ament_target_dependencies(
 )
 
 install(
-  DIRECTORY include launch rviz
+  DIRECTORY include rviz
   DESTINATION share/${PROJECT_NAME}
 )
 install(
