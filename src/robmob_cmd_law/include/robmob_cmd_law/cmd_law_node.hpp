@@ -64,9 +64,9 @@ private:
     void control_loop();
     void stop_robot();
 
-    double l1 = 0.1; 
-    double k1 = 0.8; 
-    double k2 = 0.8;
+    double l1; 
+    double k1; 
+    double k2;
 };
 
 #endif
