@@ -23,12 +23,6 @@ def generate_launch_description():
         launch_arguments={'simulated': LaunchConfiguration('simulated')}.items()
     )
 
-    auto_explo_node = Node(
-        package='robmob_auto_explo',
-        executable='auto_explo_node',
-        name='auto_explo_node'
-    )
-
     map_output_path = os.path.join(pkg_bringup, 'config', 'map_generee')
     
     save_map_cmd = ExecuteProcess(
@@ -71,26 +65,25 @@ def generate_launch_description():
         gz_launch,
         planner_node,
         cmd_law_node,
-        auto_explo_node,
         acquisition_launch, 
 
-        RegisterEventHandler(
-            event_handler=OnProcessStart(  
-                target_action=auto_explo_node, 
-                on_start=[
-                    LogInfo(msg='Exploration démarrée...'),
-                ]
-            )
-        ),
+        # RegisterEventHandler(
+        #     event_handler=OnProcessStart(  
+        #         target_action=auto_explo_node, 
+        #         on_start=[
+        #             LogInfo(msg='Exploration démarrée...'),
+        #         ]
+        #     )
+        # ),
 
-        RegisterEventHandler(
-            event_handler=OnProcessExit( 
-                target_action=auto_explo_node, 
-                on_exit=[
-                    LogInfo(msg='Exploration terminée détectée. Sauvegarde de la carte et lancement de l\'exploitation...'),
-                    save_map_cmd,
-                    exploitation_launch
-                ]
-            )
-        )
+        # RegisterEventHandler(
+        #     event_handler=OnProcessExit( 
+        #         target_action=auto_explo_node, 
+        #         on_exit=[
+        #             LogInfo(msg='Exploration terminée détectée. Sauvegarde de la carte et lancement de l\'exploitation...'),
+        #             save_map_cmd,
+        #             exploitation_launch
+        #         ]
+        #     )
+        # )
     ])

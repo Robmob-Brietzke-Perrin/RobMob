@@ -50,7 +50,7 @@ bool MapHelper::is_free(double x, double y)
   int index = get_index(mx, my);
   int8_t value = map_.data[index];
 
-  if (value == 0 || value == -1) { // Accept unknown
+  if (value <=50) { // Accept unknown
       return true; 
   }
   return false;
@@ -86,7 +86,7 @@ void MapHelper::inflate_obstacles(float bot_radius)
       int idx = get_index(x, y);
       
       // If the cell is originally an obstacle
-      if (original_data[idx] > 0)
+      if (original_data[idx] >= 100)
       {
         // Then we fill out a circle around it in the new map
         for (int dy = -cell_radius; dy <= cell_radius; ++dy)
@@ -100,7 +100,7 @@ void MapHelper::inflate_obstacles(float bot_radius)
 
             if (nx >= 0 && nx < w && ny >= 0 && ny < h) // Still check if in bounds
             {
-              map_.data[get_index(nx, ny)] = 1; // Update to obstacle
+              map_.data[get_index(nx, ny)] = 100; // Update to obstacle
             }
           }
         }

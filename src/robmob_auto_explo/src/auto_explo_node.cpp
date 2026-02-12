@@ -42,10 +42,10 @@ void AutoExploNode::decision_loop() {
 
     // Appel au helper pour trouver la prochaine direction cible (combinasion lointain + unknown + inertie)
     auto best_angle = ExploHelper::getBestDirection(
-        latest_scan_, latest_map_, x, y, yaw, 0.4, last_angle_); // FIXME: 40cm suffisant? 
+        latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_); // FIXME: 40cm suffisant? 
 
     if (best_angle.has_value()) {
-        publish_goal(x, y, yaw, best_angle.value(), 0.4);
+        publish_goal(x, y, yaw, best_angle.value(), 2.0);
         last_angle_ = best_angle.value();
     } else {
         RCLCPP_WARN(this->get_logger(), "Aucune bonne direction trouvée.");
