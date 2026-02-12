@@ -55,7 +55,7 @@ private:
   PoseStamped current_goal_;
 
   const double GOAL_THRESHOLD = 0.25;
-  const double OBSTACLE_THRESHOLD = 0.35;
+  const double OBSTACLE_THRESHOLD = 0.5;
 };
 
 #endif // ROBMOB_AUTO_EXPLO__AUTO_EXPLO_NODE_HPP
