@@ -21,10 +21,11 @@ bool MapHelper::ws_to_map(double wx, double wy, int &mx, int &my)
   mx = static_cast<int>(std::floor((wx - origin_x_) / resolution_));
   my = static_cast<int>(std::floor((wy - origin_y_) / resolution_));
 
-  if (mx < 0 || mx >= static_cast<int>(width_) || 
-      my < 0 || my >= static_cast<int>(height_)) {
-    return false;
-  }
+  // if (mx < 0 || mx >= static_cast<int>(width_) || 
+  //     my < 0 || my >= static_cast<int>(height_)) {
+  //     RCLCPP_INFO(this->get_logger(), "out of bounds");
+  //   return false;
+  // }
   return true;
 }
 
@@ -87,7 +88,7 @@ void MapHelper::inflate_obstacles(float bot_radius)
       // If the cell is originally an obstacle
       if (original_data[idx] > 0)
       {
-        // Then fill out a circle around it in the new map
+        // Then we fill out a circle around it in the new map
         for (int dy = -cell_radius; dy <= cell_radius; ++dy)
         {
           for (int dx = -cell_radius; dx <= cell_radius; ++dx)
