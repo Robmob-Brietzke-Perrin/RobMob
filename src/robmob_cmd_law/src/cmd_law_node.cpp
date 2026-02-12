@@ -117,6 +117,12 @@ void CmdLawNode::control_loop()
 
         //`Get current target
         auto target_pose = current_path_.poses[target_index_].pose;
+
+        // On attend d'être aligné
+        if (align_to_target(curr_yaw, target_pose.position.x, target_pose.position.y, curr_x, curr_y)) {
+            return; 
+        }
+
         double xr = target_pose.position.x;
         double yr = target_pose.position.y;
 
@@ -159,6 +165,46 @@ void CmdLawNode::control_loop()
         RCLCPP_WARN(this->get_logger(), "TF Wait: %s", ex.what());
     }
 }
+
+bool CmdLawNode::align_to_target(double curr_yaw, double target_x, double target_y, double curr_x, double curr_y)
+{
+    double angle_to_target = std::atan2(target_y - curr_y, target_x - curr_x);
+    double yaw_error = angle_to_target - curr_yaw;
+
+    // Normalisation par boucle pcq % est pour les int
+    while (yaw_error > M_PI)  yaw_error -= 2.0 * M_PI;
+    while (yaw_error < -M_PI) yaw_error += 2.0 * M_PI;
+
+    double abs_error = std::abs(yaw_error);
+
+    // Seuils (2 seuils pour éviter des effets d'oscillation à la limite)
+    const double ALIGN_THRESHOLD_ENTER = 0.5; // ~30° (0.8≃45° si besoin en test) : upper bound, si l'ange est supérieur à ça, on se réaligne
+    const double ALIGN_THRESHOLD_EXIT = 0.2;  // ~11° : lower bound, angle ou l'alignement suffit
+
+    if (abs_error > ALIGN_THRESHOLD_ENTER || (path_following_active_ && abs_error > ALIGN_THRESHOLD_EXIT && std::abs(last_u1_) < 0.01)) {
+        
+        double W_MAX = this->get_parameter("w_max").as_double();
+        TwistCmd pivot_cmd;
+
+        double w_speed = std::clamp(1.5 * yaw_error, -W_MAX, W_MAX);
+
+        #ifdef ROS_DISTRO_JAZZY
+            pivot_cmd.header.stamp = this->now();
+            pivot_cmd.header.frame_id = "base_link";
+            pivot_cmd.twist.angular.z = w_speed;
+            pivot_cmd.twist.linear.x = 0.0;
+        #else
+            pivot_cmd.angular.z = w_speed;
+            pivot_cmd.linear.x = 0.0;
+        #endif
+
+        cmd_vel_pub_->publish(pivot_cmd);
+        return true; 
+    }
+
+    return false; // Le robot est bien orienté
+}
+
 void CmdLawNode::stop_robot()
 {
     path_following_active_ = false;

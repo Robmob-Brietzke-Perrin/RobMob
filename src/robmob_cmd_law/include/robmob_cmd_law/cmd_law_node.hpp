@@ -38,6 +38,8 @@ private:
     using ComputePath = robmob_interfaces::action::ComputePath;
     using GoalHandleComputePath = rclcpp_action::ClientGoalHandle<ComputePath>;
 
+    bool align_to_target(double curr_yaw, double target_x, double target_y, double curr_x, double curr_y);
+
     // Objets ROS
     rclcpp_action::Client<ComputePath>::SharedPtr client_ptr_;
     rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr goal_sub_;
