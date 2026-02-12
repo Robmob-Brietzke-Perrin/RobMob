@@ -23,16 +23,17 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     stop_sub_ = this->create_subscription<std_msgs::msg::Empty>(
         "stop_exploration", 10, std::bind(&AutoExploNode::stop_cb, this, std::placeholders::_1));
 
-    map_save_client_ = this->create_client<SaveMap>("/slam_toolbox/save_map");
-    this->declare_parameter("map_save_path", "~/robmob_ws/src/robmob_bringup/config/map_generee");
+    // map_save_client_ = this->create_client<SaveMap>("/slam_toolbox/save_map");
+    // this->declare_parameter("map_save_path", "~/robmob_ws/src/robmob_bringup/config/map_generee");
 
     RCLCPP_INFO(this->get_logger(), "Noeud d'exploration auto prêt.");
 }
 
 void AutoExploNode::stop_cb(const std_msgs::msg::Empty::SharedPtr msg) {
     (void)msg;
-    RCLCPP_INFO(this->get_logger(), "Fin d'exploration. Lancement de la sauvegarde...");
+    RCLCPP_INFO(this->get_logger(), "Fin de l'exploration...");
 
+    timer_->cancel();
     // Renvoie le robot à la base
     if (initial_pose_saved_) {
         initial_pose_.header.stamp = this->now();
@@ -41,19 +42,19 @@ void AutoExploNode::stop_cb(const std_msgs::msg::Empty::SharedPtr msg) {
     }
 
     // Save la map via le service de Slam Toolbox
-    if (!map_save_client_->wait_for_service(std::chrono::seconds(5))) {
-        RCLCPP_ERROR(this->get_logger(), "Service Slam Toolbox non disponible !");
-    } else {
-        auto request = std::make_shared<SaveMap::Request>();
-        request->name.data = this->get_parameter("map_save_path").as_string();; 
+    // if (!map_save_client_->wait_for_service(std::chrono::seconds(5))) {
+    //     RCLCPP_ERROR(this->get_logger(), "Service Slam Toolbox non disponible !");
+    // } else {
+    //     auto request = std::make_shared<SaveMap::Request>();
+    //     request->name.data = this->get_parameter("map_save_path").as_string();; 
         
-        RCLCPP_INFO(this->get_logger(), "Sauvegarde de la carte via Slam Toolbox...");
-        map_save_client_->async_send_request(request);
-    }
+    //     RCLCPP_INFO(this->get_logger(), "Sauvegarde de la carte via Slam Toolbox...");
+    //     map_save_client_->async_send_request(request);
+    // }
 
-    // 3. Délai pour laisser le temps au robot de bouger et au fichier d'être écrit
-    rclcpp::sleep_for(std::chrono::seconds(3));
-    rclcpp::shutdown();
+    // // Délai pour laisser le temps au robot de bouger et au fichier d'être écrit
+    // rclcpp::sleep_for(std::chrono::seconds(3));
+    // rclcpp::shutdown();
 }
 void AutoExploNode::decision_loop() {
   if (!latest_map_ || !latest_scan_) return;

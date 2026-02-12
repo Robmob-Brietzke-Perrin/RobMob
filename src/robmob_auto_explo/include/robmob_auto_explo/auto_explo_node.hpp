@@ -13,13 +13,13 @@
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
 #include "std_msgs/msg/empty.hpp"
-#include "slam_toolbox/srv/save_map.hpp"
+// #include "slam_toolbox/srv/save_map.hpp"
 
 //FIXME: mauvais scope
 using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
 using LaserScan = sensor_msgs::msg::LaserScan;
 using PoseStamped = geometry_msgs::msg::PoseStamped;
-using SaveMap = slam_toolbox::srv::SaveMap;
+// using SaveMap = slam_toolbox::srv::SaveMap;
 
 class AutoExploNode : public rclcpp::Node
 {
@@ -47,7 +47,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr stop_sub_;
 
-  rclcpp::Client<SaveMap>::SharedPtr map_save_client_;
+  // rclcpp::Client<SaveMap>::SharedPtr map_save_client_;
 
   OccupancyGrid::SharedPtr latest_map_;
   LaserScan::SharedPtr latest_scan_;
