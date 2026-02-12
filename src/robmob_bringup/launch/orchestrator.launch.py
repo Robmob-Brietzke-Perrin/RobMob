@@ -3,9 +3,9 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import (IncludeLaunchDescription, ExecuteProcess, 
                             RegisterEventHandler, LogInfo, DeclareLaunchArgument)
-from launch.event_handlers import OnProcessExit
+from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
+from launch.substitutions import LaunchConfiguration
 from launch.conditions import IfCondition
 from launch_ros.actions import Node
 
@@ -66,28 +66,29 @@ def generate_launch_description():
         condition=IfCondition(LaunchConfiguration('simulated'))
     )
 
-    start_acquisition = RegisterEventHandler(
-        event_handler=OnProcessStart(
-            target_action=gz_launch,
-            on_start=[
-                LogInfo(msg='Gazebo a démarré, lancement de l\'acquisition...'),
-                acquisition_launch
-            ]
-        )
-    )
 
     return LaunchDescription([
         sim_arg,
         gz_launch,
         planner_node,
         cmd_law_node,
-        start_acquisition,
-        
+        auto_explo_node,
+        acquisition_launch, 
+
         RegisterEventHandler(
-            OnProcessExit(
+            event_handler=OnProcessStart(  
+                target_action=auto_explo_node, 
+                on_start=[
+                    LogInfo(msg='Exploration démarrée...'),
+                ]
+            )
+        ),
+
+        RegisterEventHandler(
+            event_handler=OnProcessExit( 
                 target_action=auto_explo_node, 
                 on_exit=[
-                    LogInfo(msg='Exploration terminée détectée. Sauvegarde...'),
+                    LogInfo(msg='Exploration terminée détectée. Sauvegarde de la carte et lancement de l\'exploitation...'),
                     save_map_cmd,
                     exploitation_launch
                 ]

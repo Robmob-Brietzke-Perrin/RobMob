@@ -18,7 +18,7 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Boucle de décision (pas trop pressé, 2Hz par défault, à tune eventuellement)
-    timer_ = this->create_wall_timer(500ms, std::bind(&AutoExploNode::decision_loop, this));
+    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this));
     
     RCLCPP_INFO(this->get_logger(), "Noeud d'exploration auto prêt.");
 }
@@ -34,7 +34,7 @@ void AutoExploNode::decision_loop() {
         latest_scan_, latest_map_, x, y, yaw, 0.4, last_angle_); // FIXME: 40cm suffisant? 
 
     if (best_angle.has_value()) {
-        publish_goal(x, y, yaw, best_angle.value(), 2.0);
+        publish_goal(x, y, yaw, best_angle.value(), 0.4);
         last_angle_ = best_angle.value();
     } else {
         RCLCPP_WARN(this->get_logger(), "Aucune bonne direction trouvée.");
