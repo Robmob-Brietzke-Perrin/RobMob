@@ -4,7 +4,7 @@
 void MapHelper::initialize(const nav_msgs::msg::OccupancyGrid &map_msg)
 {
   map_ = map_msg;
-  
+
   width_ = map_.info.width;
   height_ = map_.info.height;
   resolution_ = map_.info.resolution;

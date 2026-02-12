@@ -32,6 +32,9 @@ private:
   bool get_robot_pose(double &x, double &y, double &yaw);
   void publish_goal(double x, double y, double yaw, double sector_angle, double dist);
 
+
+  void stop_cb();
+
   // Membres
   rclcpp::Subscription<OccupancyGrid>::SharedPtr map_sub_;
   rclcpp::Subscription<LaserScan>::SharedPtr scan_sub_;
