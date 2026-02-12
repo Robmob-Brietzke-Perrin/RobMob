@@ -47,6 +47,14 @@ private:
   OccupancyGrid::SharedPtr latest_map_;
   LaserScan::SharedPtr latest_scan_;
   double last_angle_ = 0.0;
+
+  PoseStamped initial_pose_;
+  bool initial_pose_saved_ = false;
+  bool goal_active_ = false;
+  PoseStamped current_goal_;
+
+  const double GOAL_THRESHOLD = 0.3;
+  const double OBSTACLE_THRESHOLD = 0.5;
 };
 
 #endif // ROBMOB_AUTO_EXPLO__AUTO_EXPLO_NODE_HPP

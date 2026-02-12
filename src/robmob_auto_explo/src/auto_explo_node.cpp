@@ -25,31 +25,58 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     
 }
 
-void AutoExploNode::stop_cb()
-{
-  auto t = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
-  x = t.transform.translation.x;
-  y = t.transform.translation.y;
-  goal_pub_->publish();
-  rclcpp::shutdown();
+void AutoExploNode::stop_cb() {
+    RCLCPP_INFO(this->get_logger(), "Temps d'exploration écoulé ! Retour au départ...");
+    
+    if (initial_pose_saved_) {
+        initial_pose_.header.stamp = this->now();
+        goal_pub_->publish(initial_pose_);
+        rclcpp::sleep_for(std::chrono::seconds(2)); 
+    }
+    
+    rclcpp::shutdown();
 }
 
 void AutoExploNode::decision_loop() {
-    if (!latest_map_ || !latest_scan_) return;
+  if (!latest_map_ || !latest_scan_) return;
 
+    if (!initial_pose_saved_) {
+      double x, y, yaw;
+      if (get_robot_pose(x, y, yaw)) {
+          initial_pose_.header.frame_id = "map";
+          initial_pose_.pose.position.x = x;
+          initial_pose_.pose.position.y = y;
+          initial_pose_.pose.orientation.w = 1.0; // Simplifié
+          initial_pose_saved_ = true;
+          RCLCPP_INFO(this->get_logger(), "Position de départ sauvegardée.");
+      }
+    }
     double x, y, yaw;
     if (!get_robot_pose(x, y, yaw)) return;
 
-    // Appel au helper pour trouver la prochaine direction cible (combinasion lointain + unknown + inertie)
+    // Vérifier si l'objectif actuel est toujours valide/atteint
+    if (goal_active_) {
+        double dist_to_goal = std::hypot(current_goal_.pose.position.x - x, 
+                                         current_goal_.pose.position.y - y);
+        
+        // Vérifier aussi si un mur est apparu devant (via le scan)
+        float min_scan = *std::min_element(latest_scan_->ranges.begin(), latest_scan_->ranges.end());
+
+        if (dist_to_goal > GOAL_THRESHOLD && min_scan > OBSTACLE_THRESHOLD) {
+            // L'objectif est toujours en cours et le chemin est libre, on attend.
+            return; 
+        }
+        RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
+    }
+
+    // Calculer une nouvelle direction
     auto best_angle = ExploHelper::getBestDirection(
-        latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_); // FIXME: 40cm suffisant? 
+        latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
 
     if (best_angle.has_value()) {
         publish_goal(x, y, yaw, best_angle.value(), 2.0);
         last_angle_ = best_angle.value();
-    } else {
-        RCLCPP_WARN(this->get_logger(), "Aucune bonne direction trouvée.");
-        // rclcpp::shutdown(); // TODO: trouver une condition d'arrêt, pour l'instant il faut ros2 node kill /auto_explo_node
+        goal_active_ = true;
     }
 }
 
@@ -69,15 +96,13 @@ bool AutoExploNode::get_robot_pose(double &x, double &y, double &yaw) {
 }
 
 void AutoExploNode::publish_goal(double x, double y, double yaw, double sector_angle, double dist) {
-    PoseStamped goal;
-    goal.header.stamp = this->now();
-    goal.header.frame_id = "map";
+    current_goal_.header.stamp = this->now();
+    current_goal_.header.frame_id = "map";
+    current_goal_.pose.position.x = x + dist * std::cos(yaw + sector_angle);
+    current_goal_.pose.position.y = y + dist * std::sin(yaw + sector_angle);
+    current_goal_.pose.orientation.w = 1.0;
 
-    goal.pose.position.x = x + dist * cos(yaw + sector_angle);
-    goal.pose.position.y = y + dist * sin(yaw + sector_angle);
-    goal.pose.orientation.w = 1.0; // FIXME: donner la même rotation qu'actuellement? 
-
-    goal_pub_->publish(goal);
+    goal_pub_->publish(current_goal_);
 }
 
 int main(int argc, char ** argv) {
