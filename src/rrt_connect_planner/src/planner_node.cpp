@@ -39,7 +39,7 @@ void PlannerNode::map_callback(const OccupancyGrid::SharedPtr msg)
     std::lock_guard<std::mutex> lock(map_mutex_);
     map_helper_.initialize(*msg);
     // map_helper_.inflate_obstacles(robot_radius_);
-    RCLCPP_INFO(this->get_logger(), "Map updated and inflated");
+    
 }
 
 rclcpp_action::GoalResponse PlannerNode::handle_goal(

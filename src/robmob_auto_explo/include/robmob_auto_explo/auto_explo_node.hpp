@@ -43,6 +43,7 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr stop_timer_;
 
   OccupancyGrid::SharedPtr latest_map_;
   LaserScan::SharedPtr latest_scan_;

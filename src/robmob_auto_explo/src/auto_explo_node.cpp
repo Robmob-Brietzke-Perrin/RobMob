@@ -18,11 +18,9 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Boucle de décision (pas trop pressé, 2Hz par défault, à tune eventuellement)
-    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this));
-    timer_ = this->create_wall_timer(120000ms, std::bind(&AutoExploNode::stop_cb, this));
+    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this)); stop_timer_ = this->create_wall_timer(120000ms, std::bind(&AutoExploNode::stop_cb, this));
     
     RCLCPP_INFO(this->get_logger(), "Noeud d'exploration auto prêt.");
-    
 }
 
 void AutoExploNode::stop_cb() {
@@ -40,19 +38,18 @@ void AutoExploNode::stop_cb() {
 void AutoExploNode::decision_loop() {
   if (!latest_map_ || !latest_scan_) return;
 
-    if (!initial_pose_saved_) {
-      double x, y, yaw;
-      if (get_robot_pose(x, y, yaw)) {
-          initial_pose_.header.frame_id = "map";
-          initial_pose_.pose.position.x = x;
-          initial_pose_.pose.position.y = y;
-          initial_pose_.pose.orientation.w = 1.0; // Simplifié
-          initial_pose_saved_ = true;
-          RCLCPP_INFO(this->get_logger(), "Position de départ sauvegardée.");
-      }
-    }
     double x, y, yaw;
     if (!get_robot_pose(x, y, yaw)) return;
+
+    if(!initial_pose_saved_)
+    {
+      initial_pose_.header.frame_id = "map";
+      initial_pose_.pose.position.x = x;
+      initial_pose_.pose.position.y = y;
+      initial_pose_.pose.orientation.w = 1.0; // Simplifié
+      initial_pose_saved_ = true;
+      RCLCPP_INFO(this->get_logger(), "Position de départ sauvegardée.");
+    }
 
     // Vérifier si l'objectif actuel est toujours valide/atteint
     if (goal_active_) {
@@ -68,15 +65,17 @@ void AutoExploNode::decision_loop() {
         }
         RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
     }
+    else
+    { 
+      // Calculer une nouvelle direction
+      auto best_angle = ExploHelper::getBestDirection(
+          latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
 
-    // Calculer une nouvelle direction
-    auto best_angle = ExploHelper::getBestDirection(
-        latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
-
-    if (best_angle.has_value()) {
-        publish_goal(x, y, yaw, best_angle.value(), 2.0);
-        last_angle_ = best_angle.value();
-        goal_active_ = true;
+      if (best_angle.has_value()) {
+          publish_goal(x, y, yaw, best_angle.value(), 2.0);
+          last_angle_ = best_angle.value();
+          goal_active_ = true;
+      }
     }
 }
 
