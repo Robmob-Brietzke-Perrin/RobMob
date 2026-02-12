@@ -157,7 +157,7 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
         std::shared_ptr<TreeNode> q_new, q_conn;
 
         if (rrt.extend(*tree_a, q_rand, q_new) != RRTConnect::TRAPPED) {
-            RCLCPP_INFO(this->get_logger(), "extenting...");
+            // RCLCPP_INFO(this->get_logger(), "extenting...");
             if (rrt.connect(*tree_b, q_new->get_point(), q_conn) == RRTConnect::REACHED) {
                 current_path = (tree_a == &tree_start) ? rrt.get_path(q_new, q_conn) : rrt.get_path(q_conn, q_new);
                 success = true;

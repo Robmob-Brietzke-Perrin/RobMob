@@ -63,7 +63,12 @@ void AutoExploNode::decision_loop() {
             // L'objectif est toujours en cours et le chemin est libre, on attend.
             return; 
         }
-        RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
+        else 
+        {
+            goal_active_ = false;
+            RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
+        }
+            
     }
     else
     { 
