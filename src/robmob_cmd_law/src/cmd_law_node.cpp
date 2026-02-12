@@ -181,7 +181,7 @@ bool CmdLawNode::align_to_target(double curr_yaw, double target_x, double target
     const double ALIGN_THRESHOLD_ENTER = 0.5; // ~30° (0.8≃45° si besoin en test) : upper bound, si l'ange est supérieur à ça, on se réaligne
     const double ALIGN_THRESHOLD_EXIT = 0.2;  // ~11° : lower bound, angle ou l'alignement suffit
 
-    if (abs_error > ALIGN_THRESHOLD_ENTER || (path_following_active_ && abs_error > ALIGN_THRESHOLD_EXIT && std::abs(last_u1_) < 0.01)) {
+    if (abs_error > ALIGN_THRESHOLD_ENTER || (path_following_active_ && abs_error > ALIGN_THRESHOLD_EXIT)) {
         
         double W_MAX = this->get_parameter("w_max").as_double();
         TwistCmd pivot_cmd;
