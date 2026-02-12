@@ -8,7 +8,7 @@ using namespace std::placeholders;
 PlannerNode::PlannerNode() : Node("rrt_planner_node")
 {
     // Parameters
-    this->declare_parameter("robot_radius", 0.2);
+    this->declare_parameter("robot_radius", 0.25);
     this->declare_parameter("verbose", true);
 
     robot_radius_ = this->get_parameter("robot_radius").as_double();
@@ -112,7 +112,6 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
 
     // Initialisation & instanciate Check Collision
     auto collision_checker = [this](double x, double y) -> bool {
-        return true;
         return this->map_helper_.is_free(x, y);
     };
 

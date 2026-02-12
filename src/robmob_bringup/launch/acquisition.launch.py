@@ -28,11 +28,12 @@ def generate_launch_description():
     return LaunchDescription([
         sim_arg,
         carto_launch,
-        full_turn_node,
-        RegisterEventHandler(
-            OnProcessExit(
-                target_action=full_turn_node,
-                on_exit=[explore_node]
-            )
-        )
+        explore_node
+        # full_turn_node,
+        # RegisterEventHandler(
+        #     OnProcessExit(
+        #         target_action=full_turn_node,
+        #         on_exit=[explore_node]
+        #     )
+        # )
     ])
