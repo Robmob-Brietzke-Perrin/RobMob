@@ -12,11 +12,14 @@
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
+#include "std_msgs/msg/empty.hpp"
+#include "slam_toolbox/srv/save_map.hpp"
 
 //FIXME: mauvais scope
 using OccupancyGrid = nav_msgs::msg::OccupancyGrid;
 using LaserScan = sensor_msgs::msg::LaserScan;
 using PoseStamped = geometry_msgs::msg::PoseStamped;
+using SaveMap = slam_toolbox::srv::SaveMap;
 
 class AutoExploNode : public rclcpp::Node
 {
@@ -32,8 +35,7 @@ private:
   bool get_robot_pose(double &x, double &y, double &yaw);
   void publish_goal(double x, double y, double yaw, double sector_angle, double dist);
 
-
-  void stop_cb();
+  void stop_cb(const std_msgs::msg::Empty::SharedPtr msg);
 
   // Membres
   rclcpp::Subscription<OccupancyGrid>::SharedPtr map_sub_;
@@ -43,7 +45,9 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
   rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::TimerBase::SharedPtr stop_timer_;
+  rclcpp::Subscription<std_msgs::msg::Empty>::SharedPtr stop_sub_;
+
+  rclcpp::Client<SaveMap>::SharedPtr map_save_client_;
 
   OccupancyGrid::SharedPtr latest_map_;
   LaserScan::SharedPtr latest_scan_;

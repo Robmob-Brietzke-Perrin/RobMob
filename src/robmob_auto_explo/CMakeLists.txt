@@ -14,6 +14,8 @@ find_package(tf2_ros REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(slam_toolbox REQUIRED)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -39,7 +41,9 @@ ament_target_dependencies(auto_explo_node
   "robmob_interfaces"
   "nav_msgs"
   "sensor_msgs"
-  "geometry_msgs") 
+  "geometry_msgs"
+  "std_msgs"
+  "slam_toolbox") 
 
 ament_target_dependencies(full_turn_node
   "rclcpp"

@@ -18,23 +18,43 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Boucle de décision (pas trop pressé, 2Hz par défault, à tune eventuellement)
-    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this)); stop_timer_ = this->create_wall_timer(120000ms, std::bind(&AutoExploNode::stop_cb, this));
-    
+    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this));
+
+    stop_sub_ = this->create_subscription<std_msgs::msg::Empty>(
+        "stop_exploration", 10, std::bind(&AutoExploNode::stop_cb, this, std::placeholders::_1));
+
+    map_save_client_ = this->create_client<SaveMap>("/slam_toolbox/save_map");
+    this->declare_parameter("map_save_path", "~/robmob_ws/src/robmob_bringup/config/map_generee");
+
     RCLCPP_INFO(this->get_logger(), "Noeud d'exploration auto prêt.");
 }
 
-void AutoExploNode::stop_cb() {
-    RCLCPP_INFO(this->get_logger(), "Temps d'exploration écoulé ! Retour au départ...");
-    
+void AutoExploNode::stop_cb(const std_msgs::msg::Empty::SharedPtr msg) {
+    (void)msg;
+    RCLCPP_INFO(this->get_logger(), "Fin d'exploration. Lancement de la sauvegarde...");
+
+    // Renvoie le robot à la base
     if (initial_pose_saved_) {
         initial_pose_.header.stamp = this->now();
         goal_pub_->publish(initial_pose_);
-        rclcpp::sleep_for(std::chrono::seconds(2)); 
+        RCLCPP_INFO(this->get_logger(), "Ordre de retour au départ envoyé.");
     }
-    
+
+    // Save la map via le service de Slam Toolbox
+    if (!map_save_client_->wait_for_service(std::chrono::seconds(5))) {
+        RCLCPP_ERROR(this->get_logger(), "Service Slam Toolbox non disponible !");
+    } else {
+        auto request = std::make_shared<SaveMap::Request>();
+        request->name.data = this->get_parameter("map_save_path").as_string();; 
+        
+        RCLCPP_INFO(this->get_logger(), "Sauvegarde de la carte via Slam Toolbox...");
+        map_save_client_->async_send_request(request);
+    }
+
+    // 3. Délai pour laisser le temps au robot de bouger et au fichier d'être écrit
+    rclcpp::sleep_for(std::chrono::seconds(3));
     rclcpp::shutdown();
 }
-
 void AutoExploNode::decision_loop() {
   if (!latest_map_ || !latest_scan_) return;
 
@@ -58,7 +78,7 @@ void AutoExploNode::decision_loop() {
         
         // Vérifier aussi si un mur est apparu devant (via le scan) maintenant seulement si devant dans le scan
         int center_idx = latest_scan_->ranges.size() / 2;
-        int window = latest_scan_->ranges.size() / 8; // env. 45 degrés
+        int window = latest_scan_->ranges.size() / 8;
         float min_front_scan = 10.0;
         
         for(int i = center_idx - window; i < center_idx + window; ++i) {
