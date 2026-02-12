@@ -54,7 +54,7 @@ private:
   bool goal_active_ = false;
   PoseStamped current_goal_;
 
-  const double GOAL_THRESHOLD = 0.1;
+  const double GOAL_THRESHOLD = 0.25;
   const double OBSTACLE_THRESHOLD = 0.35;
 };
 
