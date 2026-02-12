@@ -17,7 +17,7 @@ std::optional<double> ExploHelper::getBestDirection(
         // 1ère mesure de score -> distance moyenne donnée par le lidar
         double avg_dist = getAvgDistInSector(scan, i * points_per_sector, (i + 1) * points_per_sector);
         double score = avg_dist;
-        
+
         // On ignore les secteurs trop proche
         if (avg_dist < 0.2) continue; // FIXME: 0.2 peut-être idéaliste, à tune
 

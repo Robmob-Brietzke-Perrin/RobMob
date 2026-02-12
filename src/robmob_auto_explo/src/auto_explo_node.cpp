@@ -18,14 +18,19 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Boucle de décision (pas trop pressé, 2Hz par défault, à tune eventuellement)
-    timer_ = this->create_wall_timer(500ms, std::bind(&AutoExploNode::decision_loop, this));
+    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this));
     timer_ = this->create_wall_timer(120000ms, std::bind(&AutoExploNode::stop_cb, this));
     
     RCLCPP_INFO(this->get_logger(), "Noeud d'exploration auto prêt.");
+    
 }
 
 void AutoExploNode::stop_cb()
 {
+  auto t = tf_buffer_->lookupTransform("map", "base_link", tf2::TimePointZero);
+  x = t.transform.translation.x;
+  y = t.transform.translation.y;
+  goal_pub_->publish();
   rclcpp::shutdown();
 }
 
