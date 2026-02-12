@@ -19,7 +19,14 @@ std::optional<double> ExploHelper::getBestDirection(
         double score = avg_dist;
 
         // On ignore les secteurs trop proche
-        if (avg_dist < 1.2) continue; // FIXME: 0.2 peut-être idéaliste, à tune
+        // if (avg_dist < 1.2) continue; // FIXME: 0.2 peut-être idéaliste, à tune
+        // Au lieu de mettre un seuil sur la dist moyenne on regarde la dist min
+        double min_dist_in_sector = *std::min_element(
+            scan->ranges.begin() + i * points_per_sector, 
+            scan->ranges.begin() + (i + 1) * points_per_sector
+        );
+        if (min_dist_in_sector < 0.4) continue;
+        // if(min_dist_in_sector < 1) double score = avg_dist * min_dist_in_sector; // Si besoin de pénaliser ceux qui passent encore plus
 
         // On extrait l'angle = la direction potentielle d'exploration
         double sector_angle = scan->angle_min + (i * points_per_sector + points_per_sector / 2.0) * scan->angle_increment;

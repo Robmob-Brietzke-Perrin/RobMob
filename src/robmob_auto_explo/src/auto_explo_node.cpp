@@ -66,6 +66,7 @@ void AutoExploNode::decision_loop() {
         else 
         {
             goal_active_ = false;
+            publish_goal(x, y, yaw, 0.0, 0.0); // Stop the robot to avoid residual mvt during recomputation
             RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
         }
             
