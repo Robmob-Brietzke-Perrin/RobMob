@@ -56,10 +56,18 @@ void AutoExploNode::decision_loop() {
         double dist_to_goal = std::hypot(current_goal_.pose.position.x - x, 
                                          current_goal_.pose.position.y - y);
         
-        // Vérifier aussi si un mur est apparu devant (via le scan)
-        float min_scan = *std::min_element(latest_scan_->ranges.begin(), latest_scan_->ranges.end());
+        // Vérifier aussi si un mur est apparu devant (via le scan) maintenant seulement si devant dans le scan
+        int center_idx = latest_scan_->ranges.size() / 2;
+        int window = latest_scan_->ranges.size() / 8; // env. 45 degrés
+        float min_front_scan = 10.0;
+        
+        for(int i = center_idx - window; i < center_idx + window; ++i) {
+            if(std::isfinite(latest_scan_->ranges[i])) {
+                min_front_scan = std::min(min_front_scan, latest_scan_->ranges[i]);
+            }
+        }
 
-        if (dist_to_goal > GOAL_THRESHOLD && min_scan > OBSTACLE_THRESHOLD) {
+        if (dist_to_goal > GOAL_THRESHOLD && min_front_scan > OBSTACLE_THRESHOLD) {
             // L'objectif est toujours en cours et le chemin est libre, on attend.
             return; 
         }
