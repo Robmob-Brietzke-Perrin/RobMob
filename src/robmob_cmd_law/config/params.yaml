@@ -3,5 +3,5 @@ cmd_law_node:
     l1: 0.01
     k1: 0.5
     k2: 0.5
-    v_max: 0.1
+    v_max: 0.15
     w_max: 0.8
