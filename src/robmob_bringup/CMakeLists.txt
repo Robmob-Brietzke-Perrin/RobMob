@@ -24,13 +24,8 @@ if(BUILD_TESTING)
 endif()
 
 install(
-  DIRECTORY launch/
-  DESTINATION share/${PROJECT_NAME}/launch
-)
-
-install(
-  DIRECTORY config/
-  DESTINATION share/${PROJECT_NAME}/config
+  DIRECTORY launch config rviz
+  DESTINATION share/${PROJECT_NAME}/
 )
 
 ament_package()
