@@ -1,0 +1,8 @@
+auto_explo_node:
+  ros__parameters:
+    goal_threshold: 0.3
+    obstacle_threshold: 0.5
+    wait_duration: 2.5
+    scan_fov_deg: 90.0
+    search_dist: 1.2
+    timer_period_ms: 100

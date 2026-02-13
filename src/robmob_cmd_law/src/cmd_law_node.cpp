@@ -5,11 +5,23 @@ using namespace std::placeholders;
 CmdLawNode::CmdLawNode(const rclcpp::NodeOptions & options) 
 : Node("cmd_law_node", options) 
 {
-    this->declare_parameter("l1", 0.1);    // Dist to virtual control point P
-    this->declare_parameter("k1", 0.8);    // Gain in X
-    this->declare_parameter("k2", 0.8);    // Gain in Y
-    this->declare_parameter("v_max", 0.4); // Max Linear velocity
-    this->declare_parameter("w_max", 1.0); // Max Angular velocity
+    this->declare_parameter("l1", 0.1);
+    this->declare_parameter("k1", 0.8);
+    this->declare_parameter("k2", 0.8);
+    this->declare_parameter("v_max", 0.4);
+    this->declare_parameter("w_max", 1.0);
+    this->declare_parameter("action_max_iterations", 32768);
+    this->declare_parameter("action_max_tree_size", 16384);
+    this->declare_parameter("reached_threshold", 0.15);
+
+    params_.l1 = this->get_parameter("l1").as_double();
+    params_.k1 = this->get_parameter("k1").as_double();
+    params_.k2 = this->get_parameter("k2").as_double();
+    params_.v_max = this->get_parameter("v_max").as_double();
+    params_.w_max = this->get_parameter("w_max").as_double();
+    params_.action_max_iterations = this->get_parameter("action_max_iterations").as_int();
+    params_.action_max_tree_size = this->get_parameter("action_max_tree_size").as_int();
+    params_.reached_threshold = this->get_parameter("reached_threshold").as_double();
 
     client_ptr_ = rclcpp_action::create_client<ComputePath>(this, "compute_path");
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
@@ -56,8 +68,8 @@ void CmdLawNode::send_goal()
     }
 
     goal_msg.goal = this->last_goal_pose_.pose;
-    goal_msg.max_iterations = 32768;
-    goal_msg.max_tree_size = 16384;
+    goal_msg.max_iterations = params_.action_max_iterations;
+    goal_msg.max_tree_size = params_.action_max_tree_size;
 
     auto send_goal_options = rclcpp_action::Client<ComputePath>::SendGoalOptions();
     send_goal_options.goal_response_callback = std::bind(&CmdLawNode::goal_response_callback, this, _1);
@@ -108,13 +120,6 @@ void CmdLawNode::control_loop()
         double curr_y = tf.transform.translation.y;
         double curr_yaw = tf2::getYaw(tf.transform.rotation);
 
-        // dynamically get control parameters
-        double l1 = this->get_parameter("l1").as_double();
-        double k1 = this->get_parameter("k1").as_double();
-        double k2 = this->get_parameter("k2").as_double();
-        double V_MAX = this->get_parameter("v_max").as_double();
-        double W_MAX = this->get_parameter("w_max").as_double();
-
         //`Get current target
         auto target_pose = current_path_.poses[target_index_].pose;
 
@@ -127,37 +132,37 @@ void CmdLawNode::control_loop()
         double yr = target_pose.position.y;
 
         // compute virtual control point position
-        double xp = curr_x + l1 * std::cos(curr_yaw);
-        double yp = curr_y + l1 * std::sin(curr_yaw);
+        double xp = curr_x + params_.l1 * std::cos(curr_yaw);
+        double yp = curr_y + params_.l1 * std::sin(curr_yaw);
 
         // Compute distance to waypoint
         double dx = xr - curr_x;
         double dy = yr - curr_y;
         double dist = std::sqrt(dx*dx + dy*dy);
 
-        if (dist < 0.15) { // Threshold
+        if (dist < params_.reached_threshold) { // Threshold
             target_index_++;
             return;
         }
 
         // Intermediate cmd law (on v)
-        double v1 = k1 * (xr - xp);
-        double v2 = k2 * (yr - yp);
+        double v1 = params_.k1 * (xr - xp);
+        double v2 = params_.k2 * (yr - yp);
 
         // Jacobian inversion to get back to u
         double u1 = std::cos(curr_yaw) * v1 + std::sin(curr_yaw) * v2;
-        double u2 = (-std::sin(curr_yaw) / l1) * v1 + (std::cos(curr_yaw) / l1) * v2;
+        double u2 = (-std::sin(curr_yaw) / params_.l1) * v1 + (std::cos(curr_yaw) / params_.l1) * v2;
 
         // Clamp the cmd and publish
         TwistCmd cmd;
         #ifdef ROS_DISTRO_JAZZY
             cmd.header.stamp = this->now();
             cmd.header.frame_id = "base_link";
-            cmd.twist.linear.x = std::clamp(u1, -V_MAX, V_MAX);
-            cmd.twist.angular.z = std::clamp(u2, -W_MAX, W_MAX);
+            cmd.twist.linear.x = std::clamp(u1, -params_.v_max, params_.v_max);
+            cmd.twist.angular.z = std::clamp(u2, -params_.w_max, params_.w_max);
         #else
-            cmd.linear.x = std::clamp(u1, -V_MAX, V_MAX);
-            cmd.angular.z = std::clamp(u2, -W_MAX, W_MAX);
+            cmd.linear.x = std::clamp(u1, -params_.v_max, params_.v_max);
+            cmd.angular.z = std::clamp(u2, -params_.w_max, params_.w_max);
         #endif
         cmd_vel_pub_->publish(cmd);
 
@@ -182,11 +187,10 @@ bool CmdLawNode::align_to_target(double curr_yaw, double target_x, double target
     const double ALIGN_THRESHOLD_EXIT = 0.2;  // ~10° : lower bound, angle ou l'alignement suffit
 
     if (abs_error > ALIGN_THRESHOLD_ENTER || (path_following_active_ && abs_error > ALIGN_THRESHOLD_EXIT)) {
-        
-        double W_MAX = this->get_parameter("w_max").as_double();
+
         TwistCmd pivot_cmd;
 
-        double w_speed = std::clamp(1.5 * yaw_error, -W_MAX, W_MAX);
+        double w_speed = std::clamp(1.5 * yaw_error, -params_.w_max, params_.w_max);
 
         #ifdef ROS_DISTRO_JAZZY
             pivot_cmd.header.stamp = this->now();

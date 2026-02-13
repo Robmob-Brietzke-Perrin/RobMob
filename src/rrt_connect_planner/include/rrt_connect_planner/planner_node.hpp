@@ -51,9 +51,13 @@ private:
   std::mutex map_mutex_;
 
   // Params
-  float robot_radius_;
-  int max_iterations_;
-  bool verbose_;
+  struct Params {
+    double robot_radius;
+    // int max_iterations;
+    // int max_tree_size;
+    double smooth_cut_dist;
+    bool verbose;
+  } params_;
 };
 
 #endif // RRT_CONNECT_PLANNER__PLANNER_NODE_HPP
