@@ -8,7 +8,7 @@ using namespace std::placeholders;
 PlannerNode::PlannerNode() : Node("rrt_planner_node")
 {
     // Parameters
-    this->declare_parameter("robot_radius", 0.4);
+    this->declare_parameter("robot_radius", 0.2);
     this->declare_parameter("verbose", true);
 
     robot_radius_ = this->get_parameter("robot_radius").as_double();

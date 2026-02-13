@@ -77,7 +77,7 @@ void AutoExploNode::decision_loop() {
     // --- PHASE 1 : SURVEILLANCE DES OBSTACLES (Haute réactivité) ---
     // On vérifie le scan à chaque itération du timer (ex: 10Hz)
     float min_scan = 100.0f;
-    float fov_rad = (30.0f * M_PI / 180.0f);
+    float fov_rad = (45.0f * M_PI / 180.0f);
     int center_index = (-latest_scan_->angle_min) / latest_scan_->angle_increment;
     int index_range = (fov_rad / 2.0) / latest_scan_->angle_increment;
 
@@ -115,10 +115,10 @@ void AutoExploNode::decision_loop() {
         }
     } else {
         auto best_angle = ExploHelper::getBestDirection(
-            latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
+            latest_scan_, latest_map_, x, y, yaw, 1.0, last_angle_);
 
         if (best_angle.has_value()) {
-            publish_goal(x, y, yaw, best_angle.value(), 2.0);
+            publish_goal(x, y, yaw, best_angle.value(), 1.0);
             last_angle_ = best_angle.value();
             goal_active_ = true;
             RCLCPP_INFO(this->get_logger(), "Nouvel objectif envoyé (angle: %.2f rad).", best_angle.value());

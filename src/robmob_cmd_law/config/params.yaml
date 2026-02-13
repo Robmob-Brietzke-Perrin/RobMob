@@ -1,7 +1,7 @@
 cmd_law_node:
   ros__parameters:
-    l1: 0.01
+    l1: 0.1
     k1: 0.5
     k2: 0.5
-    v_max: 0.15
-    w_max: 0.8
+    v_max: 0.25
+    w_max: 1.0

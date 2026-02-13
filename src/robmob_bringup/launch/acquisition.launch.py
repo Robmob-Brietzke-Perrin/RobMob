@@ -6,15 +6,28 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import Node
 from launch_ros.substitutions import FindPackageShare
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
 
 def generate_launch_description():
     sim_arg = DeclareLaunchArgument('simulated', default_value='True')
     pkg_cmd = get_package_share_directory('robmob_cmd_law')
 
+    pkg_bringup = get_package_share_directory('robmob_bringup')
+    
+    rviz_config_path = PathJoinSubstitution([
+      pkg_bringup, 'rviz', 'custom.rviz'
+    ])
+
     carto_launch = IncludeLaunchDescription(
         PathJoinSubstitution([FindPackageShare('turtlebot3_cartographer'), 'launch', 'cartographer.launch.py']),
-        launch_arguments={'use_sim_time': LaunchConfiguration('simulated')}.items()
+        launch_arguments={'use_sim_time': LaunchConfiguration('simulated')}.items(),
+        condition=IfCondition(LaunchConfiguration('simulated'))
+    )
+
+    carto_launch_bis = IncludeLaunchDescription(
+        PathJoinSubstitution([FindPackageShare('turtlebot4_navigation'), 'launch', 'slam.launch.py']),
+        launch_arguments={'use_sim_time': LaunchConfiguration('simulated')}.items(),
+        condition=UnlessCondition(LaunchConfiguration('simulated'))
     )
 
     explore_node = Node(
@@ -22,6 +35,15 @@ def generate_launch_description():
         executable='auto_explo_node',
         name='auto_explo_node',
         parameters=[{'use_sim_time': LaunchConfiguration('simulated')}]
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        arguments=['-d', rviz_config_path],
+        parameters=[{'use_sim_time': LaunchConfiguration('simulated')}],
+        output='screen',
+        condition=UnlessCondition(LaunchConfiguration('simulated'))
     )
 
     cmd_law_node = Node(
@@ -46,8 +68,10 @@ def generate_launch_description():
     return LaunchDescription([
         sim_arg,
         carto_launch,
+        carto_launch_bis,
         explore_node,
         cmd_law_node,
         planner_node,
+        rviz_node,
         gz_launch
     ])

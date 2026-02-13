@@ -71,7 +71,7 @@ void MapHelper::inflate_obstacles(float bot_radius)
 {
   if(state_ != INITIALIZED) return; // Prevent multiple inflations
 
-  int cell_radius = std::ceil(bot_radius / resolution_);
+  int cell_radius = std::ceil(0.2f + bot_radius / resolution_);
 
   // Copy to always check on the original map
   std::vector<int8_t> original_data = map_.data;
