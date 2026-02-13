@@ -1,5 +1,0 @@
-rrt_planner_node:
-  ros__parameters:
-    robot_radius: 0.2
-    smooth_cut_dist: 0.5
-    verbose: true

@@ -18,10 +18,6 @@ def generate_launch_description():
       pkg_bringup, 'rviz', 'custom.rviz'
     ])
 
-    config_explo = os.path.join(get_package_share_directory('robmob_auto_explo'), 'config', 'auto_explo_node.yaml')
-    config_planner = os.path.join(get_package_share_directory('rrt_connect_planner'), 'config', 'planner_node.yaml')
-    config_cmd = os.path.join(get_package_share_directory('robmob_cmd_law'), 'config', 'cmd_law_node.yaml')
-
     carto_launch = IncludeLaunchDescription(
         PathJoinSubstitution([FindPackageShare('turtlebot3_cartographer'), 'launch', 'cartographer.launch.py']),
         launch_arguments={'use_sim_time': LaunchConfiguration('simulated')}.items(),
@@ -34,6 +30,13 @@ def generate_launch_description():
         condition=UnlessCondition(LaunchConfiguration('simulated'))
     )
 
+    explore_node = Node(
+        package='robmob_auto_explo',
+        executable='auto_explo_node',
+        name='auto_explo_node',
+        parameters=[{'use_sim_time': LaunchConfiguration('simulated')}]
+    )
+
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
@@ -43,25 +46,16 @@ def generate_launch_description():
         condition=UnlessCondition(LaunchConfiguration('simulated'))
     )
 
-    explore_node = Node(
-        package='robmob_auto_explo',
-        executable='auto_explo_node',
-        name='auto_explo_node',
-        parameters=[config_explo, {'use_sim_time': LaunchConfiguration('simulated')}]
-    )
-
     cmd_law_node = Node(
         package='robmob_cmd_law',
         executable='cmd_law_node',
-        name='cmd_law_node',
-        parameters=[config_cmd, {'use_sim_time': LaunchConfiguration('simulated')}]
+        parameters=[os.path.join(pkg_cmd, 'config', 'params.yaml'),
+                    {'use_sim_time': LaunchConfiguration('simulated')}]
     )
-
     planner_node = Node(
         package='rrt_connect_planner',
         executable='planner_node',
-        name='rrt_planner_node',
-        parameters=[config_planner, {'use_sim_time': LaunchConfiguration('simulated')}]
+        parameters=[{'use_sim_time': LaunchConfiguration('simulated')}]
     )
 
     gz_launch = IncludeLaunchDescription(

@@ -8,17 +8,11 @@ using namespace std::placeholders;
 PlannerNode::PlannerNode() : Node("rrt_planner_node")
 {
     // Parameters
-    this->declare_parameter("robot_radius", 0.25);
-    // this->declare_parameter("max_iterations", 5000);
-    // this->declare_parameter("max_tree_size", 10000);
-    this->declare_parameter("smooth_cut_dist", 0.5);
+    this->declare_parameter("robot_radius", 0.2);
     this->declare_parameter("verbose", true);
 
-    params_.robot_radius = this->get_parameter("robot_radius").as_double();
-    // params_.max_iterations = this->get_parameter("max_iterations").as_int();
-    // params_.max_tree_size = this->get_parameter("max_tree_size").as_int();
-    params_.smooth_cut_dist = this->get_parameter("smooth_cut_dist").as_double();
-    params_.verbose = this->get_parameter("verbose").as_bool();
+    robot_radius_ = this->get_parameter("robot_radius").as_double();
+    verbose_ = this->get_parameter("verbose").as_bool();
 
     // Map subscribtion (transient_local)
     rclcpp::QoS map_qos(1);
@@ -52,7 +46,6 @@ rclcpp_action::GoalResponse PlannerNode::handle_goal(
     const rclcpp_action::GoalUUID & uuid,
     std::shared_ptr<const ComputePath::Goal> goal)
 {
-  (void)goal;
   // check that map is ready
     if (map_helper_.get_state() == MapHelper::INSTANCIATED) {
         RCLCPP_WARN(this->get_logger(), "Rejecting goal: Map not ready");
@@ -125,7 +118,7 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
     std::lock_guard<std::mutex> lock(map_mutex_);
     if (map_helper_.get_state() == MapHelper::INITIALIZED) {
         RCLCPP_INFO(this->get_logger(), "Inflating map for new planning request...");
-        map_helper_.inflate_obstacles(params_.robot_radius);
+        map_helper_.inflate_obstacles(robot_radius_);
     }
     // if (!map_helper_.is_free(goal->start.position.x, goal->start.position.y) || 
     //     !map_helper_.is_free(goal->goal.position.x, goal->goal.position.y)) {
@@ -186,7 +179,7 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
         auto ros_path = to_ros_path(path_pts);
         feedback_msg_.inter_path = ros_path;
         goal_handle->publish_feedback(std::make_shared<ComputePath::Feedback>(feedback_msg_));
-        if (params_.verbose) {
+        if (verbose_) {
             path_pub_->publish(ros_path);
             // debug_rate.sleep();
         }
@@ -201,8 +194,8 @@ void PlannerNode::execute(const std::shared_ptr<GoalHandleComputePath> goal_hand
 
     // to be considered : add distance to obstacles (~gradient descent) if want to optimize safety
 
-    current_path = rrt.smooth_corners(current_path, params_.smooth_cut_dist); // max_cut_dist = 0.3m
-    current_path = rrt.smooth_corners(current_path, params_.smooth_cut_dist); // max_cut_dist = 0.3m
+    current_path = rrt.smooth_corners(current_path, 0.5); // max_cut_dist = 0.3m
+    current_path = rrt.smooth_corners(current_path, 0.5); // max_cut_dist = 0.3m
     // Last feedback : smooth out the path (after pruned -> sharp turns, this add some points to help that)
     publish_stage("Corner Smoothing", current_path);
 

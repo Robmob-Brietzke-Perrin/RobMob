@@ -58,20 +58,12 @@ private:
   bool goal_active_ = false;
   PoseStamped current_goal_;
 
-  // const double GOAL_THRESHOLD = 0.1;
-  // const double OBSTACLE_THRESHOLD = 0.3;
+  const double GOAL_THRESHOLD = 0.1;
+  const double OBSTACLE_THRESHOLD = 0.3;
 
   rclcpp::Time last_stop_time_{0, 0, RCL_ROS_TIME};
   bool is_waiting_ = false;
-  // const double WAIT_DURATION = 3.0;
-  struct Params {
-    double goal_threshold;
-    double obstacle_threshold;
-    double wait_duration;
-    double scan_fov_deg;
-    double search_dist;
-    int timer_period_ms;
-  } params_;
+  const double WAIT_DURATION = 3.0;
 };
 
 #endif // ROBMOB_AUTO_EXPLO__AUTO_EXPLO_NODE_HPP

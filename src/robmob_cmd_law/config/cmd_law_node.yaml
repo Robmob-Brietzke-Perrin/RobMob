@@ -1,9 +1,0 @@
-cmd_law_node:
-  ros__parameters:
-    l1: 0.15
-    k1: 1.0
-    k2: 1.0
-    v_max: 0.5
-    w_max: 1.2
-    action_max_iterations: 32768
-    action_max_tree_size: 16384

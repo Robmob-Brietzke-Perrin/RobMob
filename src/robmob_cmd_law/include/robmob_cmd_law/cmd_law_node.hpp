@@ -66,18 +66,9 @@ private:
     void control_loop();
     void stop_robot();
 
-    struct Params {
-        double l1;
-        double k1;
-        double k2;
-        double v_max;
-        double w_max;
-        int action_max_iterations;
-        int action_max_tree_size;
-        double reached_threshold;
-        // double ALIGN_THRESHOLD_ENTER;
-        // double ALIGN_THRESHOLD_EXIT;
-    } params_;
+    double l1; 
+    double k1; 
+    double k2;
 };
 
 #endif
