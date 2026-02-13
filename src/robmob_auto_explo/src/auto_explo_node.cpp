@@ -18,7 +18,7 @@ AutoExploNode::AutoExploNode() : Node("auto_explo_node") {
     tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
 
     // Boucle de décision (pas trop pressé, 2Hz par défault, à tune eventuellement)
-    timer_ = this->create_wall_timer(1000ms, std::bind(&AutoExploNode::decision_loop, this));
+    timer_ = this->create_wall_timer(100ms, std::bind(&AutoExploNode::decision_loop, this));
 
     stop_sub_ = this->create_subscription<std_msgs::msg::Empty>(
         "stop_exploration", 10, std::bind(&AutoExploNode::stop_cb, this, std::placeholders::_1));
@@ -56,69 +56,75 @@ void AutoExploNode::stop_cb(const std_msgs::msg::Empty::SharedPtr msg) {
     // rclcpp::sleep_for(std::chrono::seconds(3));
     // rclcpp::shutdown();
 }
+
 void AutoExploNode::decision_loop() {
-  if (!latest_map_ || !latest_scan_) return;
+    // 1. Vérifications de base : on a besoin des données pour travailler
+    if (!latest_map_ || !latest_scan_) return;
 
     double x, y, yaw;
     if (!get_robot_pose(x, y, yaw)) return;
 
-    if(!initial_pose_saved_)
-    {
-      initial_pose_.header.frame_id = "map";
-      initial_pose_.pose.position.x = x;
-      initial_pose_.pose.position.y = y;
-      initial_pose_.pose.orientation.w = 1.0; // Simplifié
-      initial_pose_saved_ = true;
-      RCLCPP_INFO(this->get_logger(), "Position de départ sauvegardée.");
+    // Initialisation de la position de départ (une seule fois)
+    if (!initial_pose_saved_) {
+        initial_pose_.header.frame_id = "map";
+        initial_pose_.pose.position.x = x;
+        initial_pose_.pose.position.y = y;
+        initial_pose_.pose.orientation.w = 1.0;
+        initial_pose_saved_ = true;
+        RCLCPP_INFO(this->get_logger(), "Position de départ sauvegardée.");
     }
 
-    // Vérifier si l'objectif actuel est toujours valide/atteint
-    if (goal_active_) 
-    {
-        double dist_to_goal = std::hypot(current_goal_.pose.position.x - x, current_goal_.pose.position.y - y);
-        
-        float fov_deg = 30.0f;
-        float fov_rad = fov_deg * M_PI / 180.0f;
+    // --- PHASE 1 : SURVEILLANCE DES OBSTACLES (Haute réactivité) ---
+    // On vérifie le scan à chaque itération du timer (ex: 10Hz)
+    float min_scan = 100.0f;
+    float fov_rad = (30.0f * M_PI / 180.0f);
+    int center_index = (-latest_scan_->angle_min) / latest_scan_->angle_increment;
+    int index_range = (fov_rad / 2.0) / latest_scan_->angle_increment;
 
-        int center_index = (-latest_scan_->angle_min) / latest_scan_->angle_increment;
-        int index_range = (fov_rad / 2.0) / latest_scan_->angle_increment;
+    for (int i = std::max(0, center_index - index_range); 
+         i <= std::min((int)latest_scan_->ranges.size() - 1, center_index + index_range); ++i) {
+        float r = latest_scan_->ranges[i];
+        if (r > latest_scan_->range_min && r < min_scan) min_scan = r;
+    }
 
-        int start_idx = center_index - index_range;
-        int end_idx = center_index + index_range;
+    // Si un obstacle est trop proche alors qu'on avance
+    if (goal_active_ && min_scan <= OBSTACLE_THRESHOLD) {
+        RCLCPP_WARN(this->get_logger(), "Obstacle détecté à %.2fm ! Arrêt d'urgence.", min_scan);
+        publish_goal(x, y, yaw, 0.0, 0.0); // Commande de stop
+        goal_active_ = false;
+        is_waiting_ = true;
+        last_stop_time_ = this->now();
+        return; 
+    }
 
-        start_idx = std::max(0, start_idx);
-        end_idx = std::min((int)latest_scan_->ranges.size() - 1, end_idx);
-
-        float min_scan = 100.0f; 
-        for (int i = start_idx; i <= end_idx; ++i) {
-            float r = latest_scan_->ranges[i];
-            if (r > latest_scan_->range_min && r < min_scan) {
-                min_scan = r;
-            }
-        }
-
-        if (dist_to_goal > GOAL_THRESHOLD && min_scan > OBSTACLE_THRESHOLD) {
+    // attente pour ne pas recalculer un goal avant de se sortir de dvt l'obstacle
+    if (is_waiting_) {
+        auto elapsed = (this->now() - last_stop_time_).seconds();
+        if (elapsed < WAIT_DURATION) {
             return; 
         }
-        else 
-        {
-            goal_active_ = false;
-            publish_goal(x, y, yaw, 0.0, 0.0); // Stop the robot to avoid residual mvt during recomputation
-            RCLCPP_INFO(this->get_logger(), "Objectif atteint ou obstacle détecté. Recalcul...");
-        }
-            
+        is_waiting_ = false;
+        RCLCPP_INFO(this->get_logger(), "Fin du délai d'attente, recherche d'une nouvelle direction...");
     }
-    else
-    { 
-      // Calculer une nouvelle direction
-      auto best_angle = ExploHelper::getBestDirection(
-          latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
 
-      if (best_angle.has_value()) {
-          publish_goal(x, y, yaw, best_angle.value(), 2.0);
-          last_angle_ = best_angle.value();
-          goal_active_ = true;
-      }
+    if (goal_active_) {
+        double dist_to_goal = std::hypot(current_goal_.pose.position.x - x, current_goal_.pose.position.y - y);
+        if (dist_to_goal <= GOAL_THRESHOLD) {
+            RCLCPP_INFO(this->get_logger(), "Objectif atteint.");
+            goal_active_ = false;
+        }
+    } else {
+        auto best_angle = ExploHelper::getBestDirection(
+            latest_scan_, latest_map_, x, y, yaw, 2.0, last_angle_);
+
+        if (best_angle.has_value()) {
+            publish_goal(x, y, yaw, best_angle.value(), 2.0);
+            last_angle_ = best_angle.value();
+            goal_active_ = true;
+            RCLCPP_INFO(this->get_logger(), "Nouvel objectif envoyé (angle: %.2f rad).", best_angle.value());
+        } else {
+            RCLCPP_INFO(this->get_logger(), "Aucune direction libre trouvée...");
+        }
     }
 }
 

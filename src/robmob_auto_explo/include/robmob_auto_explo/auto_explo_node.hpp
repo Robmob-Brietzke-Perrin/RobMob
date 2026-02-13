@@ -60,6 +60,10 @@ private:
 
   const double GOAL_THRESHOLD = 0.2;
   const double OBSTACLE_THRESHOLD = 0.5;
+
+  rclcpp::Time last_stop_time_{0, 0, RCL_ROS_TIME};
+  bool is_waiting_ = false;
+  const double WAIT_DURATION = 2.0;
 };
 
 #endif // ROBMOB_AUTO_EXPLO__AUTO_EXPLO_NODE_HPP
