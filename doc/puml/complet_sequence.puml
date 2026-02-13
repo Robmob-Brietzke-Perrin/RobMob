@@ -1,0 +1,12 @@
+@startuml complet
+actor User
+participant "Acquisition" as A
+participant "Exploitation" as E
+participant "SlamToolbox" as SLAM
+
+User -> A : ros2 launch robmob_bringup acquisition.launch.py
+...
+User -> SLAM : ros2 run nav2_map_server map_saver_cli -f ~/robmob_ws/src/robmob_bringup/config/map_generee
+User -> A : ros2 topic pub /stop_exploration std_msgs/msg/Empty {} --once
+User -> E : ros2 launch robmob_bringup exploitation.launch.py
+@enduml

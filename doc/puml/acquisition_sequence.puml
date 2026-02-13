@@ -1,0 +1,29 @@
+@startuml acquisition
+!pragma teoz true
+actor User
+participant "Terminal/CLI" as CLI
+participant "AutoExploNode" as AEN
+participant "CmdLawNode" as CLN
+participant "SlamToolbox" as SLAM
+
+' ros2 launch robmob_bringup acquisition.launch.py
+User -> CLI : launch via roscli
+CLI -> AEN : deploy nodes
+&CLI -> CLN
+&CLI -> SLAM
+
+loop
+  AEN -> CLN : send exploration goal
+  loop until goal reached or obstacle
+    CLN -> CLN : move toward goal
+  end
+  CLN -> AEN : new pose
+  SLAM -> AEN : provide updated map
+end
+...
+
+' ros2 topic pub /stop_exploration std_msgs/msg/Empty {} --once
+User -> CLI : request stop via roscli
+CLI -> AEN : trigger stop exploration
+AEN -> CLN : send init pose as goal 
+@enduml

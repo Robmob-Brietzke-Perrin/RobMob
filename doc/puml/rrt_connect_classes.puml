@@ -1,0 +1,65 @@
+@startuml rrt_connect
+package "rrt_connect_planner" {
+
+    class Point {
+      + double x
+      + double y
+    }
+
+    class TreeNode {
+        - Point point_
+        - std::shared_ptr<TreeNode> parent_
+        + get_point() : Point
+        + get_parent() : shared_ptr<TreeNode>
+    }
+
+    class Tree {
+        - std::vector<shared_ptr<TreeNode>> nodes_
+        + add_node(p: Point, parent: shared_ptr<TreeNode>) : shared_ptr<TreeNode>
+        + get_nodes() : vector<shared_ptr<TreeNode>>
+        + clear() : void
+    }
+
+    class RRTConnect {
+        + enum State { TRAPPED, REACHED, ADVANCED }
+        - CollisionChecker checker_
+        - float step_size_
+        + extend(tree: Tree, target: Point, new_node: shared_ptr<TreeNode>) : State
+        + connect(tree: Tree, target: Point, last_node: shared_ptr<TreeNode>) : State
+        + get_path(start: shared_ptr<TreeNode>, goal: shared_ptr<TreeNode>) : vector<Point>
+        + prune_path(path: vector<Point>) : vector<Point>
+        + smooth_corners(path: vector<Point>, max_cut_dist: double) : vector<Point>
+    }
+
+    class MapHelper {
+        + enum State { INSTANCIATED, INITIALIZED, INFLATED }
+        - nav_msgs/OccupancyGrid map_
+        - State state_
+        + initialize(map_msg: OccupancyGrid) : void
+        + inflate_obstacles(bot_radius: float) : void
+        + is_free(x: double, y: double) : bool
+        + ws_to_map(wx: double, wy: double, mx: int, my: int) : bool
+        + map_to_ws(mx: int, my: int, wx: double, wy: double) : void
+    }
+
+    class PlannerNode << (N,#FF7700) Node >> {
+        - MapHelper map_helper_
+        - Server<ComputePath> compute_path_server_
+        - Subscription<OccupancyGrid> map_sub_
+        - void execute(goal_handle: shared_ptr<GoalHandle>)
+        - void map_callback(msg: OccupancyGrid)
+    }
+
+}
+
+' Relations
+TreeNode "1" *-- "1" Point : contains
+TreeNode "1" o-- "0..1" TreeNode : parent
+Tree "1" *-- "0..*" TreeNode : manages
+RRTConnect ..> Tree : uses
+RRTConnect ..> Point : uses
+PlannerNode *-- MapHelper : contains
+PlannerNode ..> RRTConnect : uses during execution
+MapHelper -- "nav_msgs/OccupancyGrid" : processes
+
+@enduml
